@@ -1,10 +1,12 @@
+require('dotenv').config();
+
 module.exports = {
   db: {
-    host: 'localhost',
-    user: 'root',
-    password: '@WebPassVers12',
-    database: 'organization_db'
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME
   },
-  port: 5000,
-  jwtSecret: 'ca55713aad9848306d02cf9730d8d155f047065056426910fcd2bda109ce7d5a8eb6a1af88276cedc8556608f67fe7e3b7ba4230e4ef8c5ca2ad2c29a85ce973'
+  port: process.env.PORT || 5000,
+  jwtSecret: process.env.JWT_SECRET
 };
