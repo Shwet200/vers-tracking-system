@@ -43,7 +43,7 @@ const LoginPage = () => {
 
   return (
     <Container className="form-container">
-      <Header as='h2' textAlign="center">{isRegister ? 'Create Account' : 'Login'}</Header>
+      <Header as='h2' className= "h2headers" textAlign="center">{isRegister ? 'Create Account' : 'Login'}</Header>
       {message && <Message>{message}</Message>}
       <Form onSubmit={isRegister ? handleSignup : handleLogin}>
         <Form.Field>
@@ -69,7 +69,6 @@ const LoginPage = () => {
             <label>Role</label>
             <select value={role} onChange={(e) => setRole(e.target.value)} required>
               <option value="">Select Role</option>
-              <option value="admin">Admin</option>
               <option value="researcher">Researcher</option>
               <option value="testengineer">Test Engineer</option>
             </select>

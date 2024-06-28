@@ -10,6 +10,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
 import './styles.css';
 
+
 const App = () => (
   <Router>
     <div>

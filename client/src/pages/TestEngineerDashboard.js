@@ -73,7 +73,7 @@ const TestEngineerDashboard = () => {
       {message && <Message positive={message.includes('successfully')} negative={!message.includes('successfully')}>{message}</Message>}
       {activeItem === 'assignedTests' && (
         <Container>
-          <Header as='h2' textAlign="center">Tests Assigned to You</Header>
+          <Header as='h2' textAlign="center" className= "h2headers">Tests Assigned to You</Header>
           <Table celled>
             <Table.Header>
               <Table.Row>
@@ -104,7 +104,7 @@ const TestEngineerDashboard = () => {
       )}
       {activeItem === 'priorityTests' && (
         <Container>
-          <Header as='h2' textAlign="center">Priority Tests</Header>
+          <Header as='h2' textAlign="center" className= "h2headers">Priority Tests</Header>
           <Table celled>
             <Table.Header>
               <Table.Row>

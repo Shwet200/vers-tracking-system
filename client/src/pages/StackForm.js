@@ -65,7 +65,7 @@ const StackForm = () => {
   return (
     <Container>
       <Divider hidden />
-      <Header as='h2' textAlign="center">Build Request Form</Header>
+      <Header as='h2' textAlign="center" className = "h2headers">Build Request Form</Header>
       <Divider section />
       <Form onSubmit={handleSubmit} loading={loading}>
         {submitMessage && (

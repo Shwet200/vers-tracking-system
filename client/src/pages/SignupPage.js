@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Form, Button, Message, Header, Dropdown } from 'semantic-ui-react';
 
 const roleOptions = [
-  { key: 'admin', text: 'Admin', value: 'admin' },
   { key: 'researcher', text: 'Researcher', value: 'researcher' },
   { key: 'testengineer', text: 'Test Engineer', value: 'testengineer' },
 ];
+
+console.log('Role options:', roleOptions); //debugging purpose only
 
 const SignupPage = () => {
   const [email, setEmail] = useState('');

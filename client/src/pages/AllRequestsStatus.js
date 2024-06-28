@@ -40,7 +40,7 @@ const AllRequestsStatus = () => {
 
   return (
     <Container>
-      <Header as='h2' textAlign="center">All Requests Status</Header>
+      <Header as='h2' textAlign="center" className= "h2headers">All Requests Status</Header>
       <Table celled>
         <Table.Header>
           <Table.Row>

@@ -24,7 +24,7 @@ const AnalysisDashboard = () => {
 
   return (
     <Container fluid>
-      <Header as='h2' textAlign="center">Completed Tests Analysis</Header>
+      <Header as='h2' textAlign="center" className = "h2headers">Completed Tests Analysis</Header>
       {message && <Message negative>{message}</Message>}
       <div style={{ overflowX: 'auto' }}>
         <Table celled compact selectable>

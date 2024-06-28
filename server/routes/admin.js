@@ -237,7 +237,6 @@ router.get('/all-requests', auth, (req, res) => {
   });
 });
 
-// User registration process:
 // Fetch pending user registrations
 router.get('/users/pending', auth, (req, res) => {
   const sql = 'SELECT * FROM pending_users';

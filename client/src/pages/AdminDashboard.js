@@ -246,7 +246,7 @@ const AdminDashboard = () => {
       </Menu>
       {activeItem === 'pendingRequests' && (
         <Container className="container">
-          <Header as='h2' textAlign="center">Pending Test Requests</Header>
+          <Header as='h2' textAlign="center" className= "h2headers">Pending Test Requests</Header>
           <Table celled>
             <Table.Header>
               <Table.Row>
@@ -280,7 +280,7 @@ const AdminDashboard = () => {
       )}
       {activeItem === 'assignTests' && (
         <Container className="container">
-          <Header as='h2' textAlign="center">Assign Tests</Header>
+          <Header as='h2' textAlign="center" className= "h2headers">Assign Tests</Header>
           {message && <Message positive>{message}</Message>}
           <Table celled>
             <Table.Header>
@@ -331,7 +331,7 @@ const AdminDashboard = () => {
       {activeItem === 'allRequestsStatus' && <AllRequestsStatus />}
       {activeItem === 'approveUsers' && (
         <Container className="container">
-          <Header as='h2' textAlign="center">Approve Users</Header>
+          <Header as='h2' textAlign="center" className= "h2headers">Approve Users</Header>
           <Table celled>
             <Table.Header>
               <Table.Row>

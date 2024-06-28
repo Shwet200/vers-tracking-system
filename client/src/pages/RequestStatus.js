@@ -40,7 +40,7 @@ const RequestStatus = () => {
 
   return (
     <Container>
-      <Header as='h2' textAlign="center">Request Status</Header>
+      <Header as='h2' textAlign="center" className= "h2headers">Request Status</Header>
       <Table celled>
         <Table.Header>
           <Table.Row>
