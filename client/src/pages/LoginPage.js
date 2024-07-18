@@ -79,7 +79,7 @@ const LoginPage = () => {
         </Button>
       </Form>
       <Divider />
-      <Button onClick={() => setIsRegister(!isRegister)} color="grey" fluid>
+      <Button className= "Registeration" onClick={() => setIsRegister(!isRegister)} color="grey" fluid>
         {isRegister ? 'Back to Login' : 'Don\'t have an account? Create one here.'}
       </Button>
     </Container>

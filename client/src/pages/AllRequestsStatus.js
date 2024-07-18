@@ -47,7 +47,6 @@ const AllRequestsStatus = () => {
             <Table.HeaderCell>Request ID</Table.HeaderCell>
             <Table.HeaderCell>Requester Email</Table.HeaderCell>
             <Table.HeaderCell>Status</Table.HeaderCell>
-            <Table.HeaderCell>Priority</Table.HeaderCell>
             <Table.HeaderCell>Assigned To</Table.HeaderCell>
           </Table.Row>
         </Table.Header>
@@ -57,7 +56,6 @@ const AllRequestsStatus = () => {
               <Table.Cell>{request.id}</Table.Cell>
               <Table.Cell>{request.ownerEmail}</Table.Cell>
               <Table.Cell>{getStatusIcon(request.status)} {request.status}</Table.Cell>
-              <Table.Cell>{request.status === 'rejected' ? 'N/A' : (request.priority ? 'Yes' : 'No')}</Table.Cell>
               <Table.Cell>{request.status === 'rejected' ? 'N/A' : (request.assignedTo || 'Not yet')}</Table.Cell>
             </Table.Row>
           ))}

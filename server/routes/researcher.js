@@ -5,14 +5,14 @@ const auth = require('../middleware/auth');
 
 // Submit test request
 router.post('/test-request', auth, (req, res) => {
-  const { owner, cellCount, activeArea, projectArea, testType, cathode, anode, membrane, comments, purpose } = req.body;
+  const { owner, cathode, anode, membrane, comments, purpose, baseline } = req.body;
   const ownerId = req.user.id; // Extracted from the token
   const ownerEmail = req.user.email; // Extracted from the token
 
-  console.log('Test request data:', { owner, cellCount, activeArea, projectArea, testType, cathode, anode, membrane, comments, purpose, ownerId, ownerEmail }); // Debug log
+  console.log('Test request data:', { owner, cathode, anode, membrane, comments, purpose, baseline, ownerId, ownerEmail }); // Debug log
 
-  const sql = 'INSERT INTO test_requests (owner, cellCount, activeArea, projectArea, testType, cathode, anode, membrane, comments, purpose, status, created_at, ownerId, ownerEmail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending", NOW(), ?, ?)';
-  db.query(sql, [owner, cellCount, activeArea, projectArea, testType, cathode, anode, membrane, comments, purpose, ownerId, ownerEmail], (err, result) => {
+  const sql = 'INSERT INTO test_requests (owner, cathode, anode, membrane, comments, purpose, baseline, status, created_at, ownerId, ownerEmail) VALUES (?, ?, ?, ?, ?, ?, ?, "pending", NOW(), ?, ?)';
+  db.query(sql, [owner, cathode, anode, membrane, comments, purpose, baseline, ownerId, ownerEmail], (err, result) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).json({ message: 'Database error', err });
@@ -20,6 +20,7 @@ router.post('/test-request', auth, (req, res) => {
     res.json({ id: result.insertId, message: 'Test request submitted successfully' });
   });
 });
+
 
 //Fetching test requests for the logged in user
 router.get('/requests', auth, (req, res) => {
