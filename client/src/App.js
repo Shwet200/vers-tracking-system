@@ -4,12 +4,11 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import ResearcherDashboard from './pages/ResearcherDashboard';
 import TestEngineerDashboard from './pages/TestEngineerDashboard';
-import LogResultsPage from './pages/LogResultsPage';
 import AnalysisDashboard from './pages/AnalysisDashboard';
 import PrivateRoute from './components/PrivateRoute';
+import LogResultsGrid from './pages/LogResultsGrid';
 import Navbar from './components/Navbar';
 import './styles.css';
-
 
 const App = () => (
   <Router>
@@ -22,7 +21,7 @@ const App = () => (
           <Route path="/dashboard/admin" element={<PrivateRoute component={AdminDashboard} />} />
           <Route path="/dashboard/researcher" element={<PrivateRoute component={ResearcherDashboard} />} />
           <Route path="/dashboard/testengineer" element={<PrivateRoute component={TestEngineerDashboard} />} />
-          <Route path="/log-results/:testId" element={<PrivateRoute component={LogResultsPage} />} />
+          <Route path="/log-results" element={<LogResultsGrid />} />
           <Route path="/dashboard/analysis" element={<PrivateRoute component={AnalysisDashboard} />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
