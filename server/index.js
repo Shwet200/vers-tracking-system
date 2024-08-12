@@ -11,6 +11,7 @@ const app = express();
 // Middleware
 app.use(bodyParser.json());
 app.use(cors()); // Enable CORS
+app.use(express.json()); // If using JSON bodies //recently added this during tests/results glitch
 
 // Configure multer for file upload
 const upload = multer({ storage: multer.memoryStorage() });
@@ -36,11 +37,13 @@ const dashboardRoutes = require('./routes/dashboard');
 const adminRoutes = require('./routes/admin');
 const researcherRoutes = require('./routes/researcher');
 const engineerRoutes = require('./routes/testengineer');
+
 app.use('/api/users', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/researcher', researcherRoutes);
 app.use('/api/engineer', engineerRoutes);
+
 
 app.use('/api/protected', auth, (req, res) => {
   res.json({ message: `Hello ${req.userRole}! You are authenticated.` });

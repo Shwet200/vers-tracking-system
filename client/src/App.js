@@ -8,6 +8,7 @@ import AnalysisDashboard from './pages/AnalysisDashboard';
 import PrivateRoute from './components/PrivateRoute';
 import LogResultsGrid from './pages/LogResultsGrid';
 import Navbar from './components/Navbar';
+import DataReviewDashboard from './pages/DataReviewDashboard';
 import './styles.css';
 
 const App = () => (
@@ -21,8 +22,9 @@ const App = () => (
           <Route path="/dashboard/admin" element={<PrivateRoute component={AdminDashboard} />} />
           <Route path="/dashboard/researcher" element={<PrivateRoute component={ResearcherDashboard} />} />
           <Route path="/dashboard/testengineer" element={<PrivateRoute component={TestEngineerDashboard} />} />
-          <Route path="/log-results" element={<LogResultsGrid />} />
+          <Route path="/log-results" element={<PrivateRoute component={LogResultsGrid} />} />
           <Route path="/dashboard/analysis" element={<PrivateRoute component={AnalysisDashboard} />} />
+          <Route path="/data-review" element={<PrivateRoute component={DataReviewDashboard} />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </div>

@@ -8,6 +8,7 @@ const auth = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, config.jwtSecret);
     req.user = decoded;
+    req.token = token; //added now for LogResultsGrid error decoding
     console.log('Decoded user:', decoded); //logging purpose only
     next();
   } catch (e) {

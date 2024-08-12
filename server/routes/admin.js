@@ -39,17 +39,41 @@ router.get('/test-engineers', auth, (req, res) => {
 });
 
 // Assign test to engineer and update priority status
+//router.post('/requests/assign', auth, (req, res) => {
+//  const { requestId, engineerEmail, priority } = req.body;
+//  const sql = 'UPDATE test_requests SET assignedTo = ?, priority = ?, status = ? WHERE id = ?';
+//  db.query(sql, [engineerEmail, priority, 'assigned', requestId], (err, result) => {
+//    if (err) {
+//      console.error('Database error:', err);
+//      return res.status(500).json({ message: 'Database error', err });
+//    }
+//    res.json({ message: `You have assigned test ${requestId} to ${engineerEmail}.` });
+//  });
+//});
+// Assign test to engineer and update priority status
 router.post('/requests/assign', auth, (req, res) => {
   const { requestId, engineerEmail, priority } = req.body;
-  const sql = 'UPDATE test_requests SET assignedTo = ?, priority = ?, status = ? WHERE id = ?';
-  db.query(sql, [engineerEmail, priority, 'assigned', requestId], (err, result) => {
+  const sqlUpdate = 'UPDATE test_requests SET assignedTo = ?, priority = ?, status = ? WHERE id = ?';
+
+  db.query(sqlUpdate, [engineerEmail, priority, 'assigned', requestId], (err, result) => {
     if (err) {
-      console.error('Database error:', err);
+      console.error('Database error on update:', err);
       return res.status(500).json({ message: 'Database error', err });
     }
-    res.json({ message: `You have assigned test ${requestId} to ${engineerEmail}.` });
+
+    // Insert a new entry in the test_results table
+    const sqlInsert = 'INSERT INTO test_results (testRequestId) VALUES (?)';
+    db.query(sqlInsert, [requestId], (err, insertResult) => {
+      if (err) {
+        console.error('Database error on insert:', err);
+        return res.status(500).json({ message: 'Database error', err });
+      }
+
+      res.json({ message: `You have assigned test ${requestId} to ${engineerEmail} and logged it in test_results.` });
+    });
   });
 });
+
 
 // Accept test request
 router.post('/requests/accept', auth, (req, res) => {

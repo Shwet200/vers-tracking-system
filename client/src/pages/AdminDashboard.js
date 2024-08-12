@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Container, Menu, Table, Button, Dropdown, Form, Header, Message } from 'semantic-ui-react';
 import axios from 'axios';
 import AnalysisDashboard from './AnalysisDashboard';
-import AllRequestsStatus from './AllRequestsStatus'; // Import new component
-import '../styles.css'; // Import custom CSS
+import AllRequestsStatus from './AllRequestsStatus';
+import DataReviewDashboard from './DataReviewDashboard'; // Import DataReviewDashboard
+import '../styles.css';
+import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
   const [activeItem, setActiveItem] = useState('pendingRequests');
@@ -14,8 +16,15 @@ const AdminDashboard = () => {
   const [message, setMessage] = useState('');
   const [priorityTests, setPriorityTests] = useState([]);
   const [selectedEngineer, setSelectedEngineer] = useState('');
+  const navigate = useNavigate();
 
-  const handleItemClick = (e, { name }) => setActiveItem(name);
+const handleItemClick = (e, { name }) => {
+    if (name === 'dataReviewDashboard') {
+      navigate('/data-review'); // Navigate to DataReviewDashboard page
+    } else {
+      setActiveItem(name);
+    }
+  };
 
   useEffect(() => {
     const fetchPendingRequests = async () => {
@@ -230,23 +239,30 @@ const AdminDashboard = () => {
           Analysis Dashboard
         </Menu.Item>
         <Menu.Item
-           name='allRequestsStatus'
-           active={activeItem === 'allRequestsStatus'}
-           onClick={handleItemClick}
+          name='allRequestsStatus'
+          active={activeItem === 'allRequestsStatus'}
+          onClick={handleItemClick}
         >
-           All Requests Made
+          All Requests Made
         </Menu.Item>
         <Menu.Item
-           name='approveUsers'
-           active={activeItem === 'approveUsers'}
-           onClick={handleItemClick}
+          name='approveUsers'
+          active={activeItem === 'approveUsers'}
+          onClick={handleItemClick}
         >
-           Approve Users
+          Approve Users
+        </Menu.Item>
+        <Menu.Item
+          name='dataReviewDashboard'
+          active={activeItem === 'dataReviewDashboard'}
+          onClick={handleItemClick}
+        >
+          Data Review Dashboard
         </Menu.Item>
       </Menu>
       {activeItem === 'pendingRequests' && (
         <Container className="container">
-          <Header as='h2' textAlign="center" className= "h2headers">Pending Test Requests</Header>
+          <Header as='h2' textAlign="center" className="h2headers">Pending Test Requests</Header>
           <Table celled>
             <Table.Header>
               <Table.Row>
@@ -280,7 +296,7 @@ const AdminDashboard = () => {
       )}
       {activeItem === 'assignTests' && (
         <Container className="container">
-          <Header as='h2' textAlign="center" className= "h2headers">Assign Tests</Header>
+          <Header as='h2' textAlign="center" className="h2headers">Assign Tests</Header>
           {message && <Message positive>{message}</Message>}
           <Table celled>
             <Table.Header>
@@ -331,7 +347,7 @@ const AdminDashboard = () => {
       {activeItem === 'allRequestsStatus' && <AllRequestsStatus />}
       {activeItem === 'approveUsers' && (
         <Container className="container">
-          <Header as='h2' textAlign="center" className= "h2headers">Approve Users</Header>
+          <Header as='h2' textAlign="center" className="h2headers">Approve Users</Header>
           <Table celled>
             <Table.Header>
               <Table.Row>
@@ -357,6 +373,7 @@ const AdminDashboard = () => {
           </Table>
         </Container>
       )}
+      {activeItem === 'dataReviewDashboard' && <DataReviewDashboard />}
     </Container>
   );
 };
