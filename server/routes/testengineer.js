@@ -44,7 +44,11 @@ router.get('/tests/results', auth, (req, res) => {
         tr.kohConductivity,
         tr.kohPh,
         tr.recombinationLayerThickness,
-        tr.recombinationLayerPtLoading
+        tr.recombinationLayerPtLoading,
+        tr.cathode_xrf_pt_loading,
+        tr.cathode_xrf_ru_loading,
+        tr.cathode_ru_pt_mass,
+        tr.anode_fe_ni
       FROM
         test_results tr
       JOIN
@@ -1043,14 +1047,16 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       extractedData = parseSharepointData(ivSheet, eisSheet, h2CrossoverSheet, eis1VSheet, slowPolCurveSheet);
     }
 
-    // Calculate cathode_ru_pt_mass based on updated values
-    const cathodePtLoading = updateCathodeXrfPtLoading === 'yes' ? parseFloat(cathode_xrf_pt_loading) : parseFloat(cathodeData.cathode_xrf_pt_loading);
-    const cathodeRuLoading = updateCathodeXrfRuLoading === 'yes' ? parseFloat(cathode_xrf_ru_loading) : parseFloat(cathodeData.cathode_xrf_ru_loading);
-    const calculatedCathodeRuPtMass = cathodeRuLoading / (cathodePtLoading || 1);
+    // Calculate final values
+        const finalAnodeFeNi = updateAnodeFeNi ? (isNaN(parseFloat(anode_fe_ni)) ? null : parseFloat(anode_fe_ni)) : null;
+        const finalCathodeXrfPtLoading = updateCathodeXrfPtLoading ? (isNaN(parseFloat(cathode_xrf_pt_loading)) ? null : parseFloat(cathode_xrf_pt_loading)) : null;
+        const finalCathodeXrfRuLoading = updateCathodeXrfRuLoading ? (isNaN(parseFloat(cathode_xrf_ru_loading)) ? null : parseFloat(cathode_xrf_ru_loading)) : null;
+        const finalCathodeRuPtMass = finalCathodeXrfRuLoading / finalCathodeXrfPtLoading
+        console.log('Final values:', finalCathodeXrfPtLoading, finalCathodeXrfRuLoading, finalCathodeRuPtMass, finalAnodeFeNi);
 
     // Sanitize and format dates for MySQL
-        const formattedStartDate = formatDateForMySQL(result.startDate);
-        const formattedEndDate = formatDateForMySQL(result.endDate);
+    const formattedStartDate = formatDateForMySQL(result.startDate);
+    const formattedEndDate = formatDateForMySQL(result.endDate);
 
     // Combine form data, guide data and extracted data
     const data = {
@@ -1061,8 +1067,6 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       comments,
       hardwareNumber,
       testStandChannel,
-//      startDate,
-//      endDate,
       startDate: formattedStartDate,  // Use formatted date
       endDate: formattedEndDate,      // Use formatted date
       daysUnderTest,
@@ -1077,19 +1081,19 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       recombinationLayerPtLoading: recombinationLayerPtLoading || 'N/A',
       e_at_1_mA_DIW: extractedData.e_at_1_mA_DIW,
       e_at_1_mA_10mM: extractedData.e_at_1_mA_10mM,
-      cathode_xrf_pt_loading: updateCathodeXrfPtLoading === 'yes' ? parseFloat(cathode_xrf_pt_loading) : cathodeData.cathode_xrf_pt_loading,
-      cathode_xrf_ru_loading: updateCathodeXrfRuLoading === 'yes' ? parseFloat(cathode_xrf_ru_loading) : cathodeData.cathode_xrf_ru_loading,
-      cathode_ru_pt_mass: updateCathodeRuPtMass === 'yes' ? parseFloat(cathode_ru_pt_mass) : cathodeData.cathode_ru_pt_mass,
-      anode_fe_ni: updateAnodeFeNi === 'yes' ? parseFloat(anode_fe_ni) : anodeILLoadingData.anode_fe_ni,
+      cathode_xrf_pt_loading: finalCathodeXrfPtLoading,
+        cathode_xrf_ru_loading: finalCathodeXrfRuLoading,
+        cathode_ru_pt_mass: finalCathodeRuPtMass,
+        anode_fe_ni: finalAnodeFeNi,
       X_over_02,
       X_over_1,
       X_over_2,
       X_over_1_back,
       X_over_02_back,
       ...extractedData,
-      ...anodeData,
-      ...anodeILLoadingData,
-      ...cathodeData,
+//      ...anodeData,
+//      ...anodeILLoadingData,
+//      ...cathodeData,
     };
 
     console.log("Data to be inserted into test_results:", data);
@@ -1823,6 +1827,7 @@ let steadyStateData10mM = [];
 let polCurveDataDIW = [];
 let polCurveData10mM = [];
 let test4Data = [];
+let additionalPolCurves = [];
 
 router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
   try {
@@ -1838,56 +1843,98 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
     const ivData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 });
 
     // Extract relevant data for pol curves
-    polCurveDataDIW = ivData.slice(1).map(row => ({ currentDensity: row[2], voltage: row[3] }));
-    polCurveData10mM = ivData.slice(1).map(row => ({ currentDensity: row[7], voltage: row[8] }));
+    const polCurveDataDIW = ivData.slice(1).map(row => ({ currentDensity: row[2], voltage: row[3] }));
+    const polCurveData10mM = ivData.slice(1).map(row => ({ currentDensity: row[7], voltage: row[8] }));
 
     // Process Durability sheet for steady states
     const durabilitySheet = workbook.Sheets['Durability'];
     const durabilityData = xlsx.utils.sheet_to_json(durabilitySheet, { header: 1 }).slice(1);
 
-    steadyStateDataDIW = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] })); // Assuming same data is used for DIW
-    steadyStateData10mM = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
+    const steadyStateDataDIW = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
+    const steadyStateData10mM = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
 
-    //added now
-    // Test 2: Extract data
-        const test2Data = ivData.slice(1).map(row => ({
-          currentDensity: row[2],  // Column C
-          voltage: row[3]           // Column D
-        }));
+    // Process EIS_HFR sheet for Test 4
+    const eisHfrSheet = workbook.Sheets['EIS_HFR'];
+    const eisHfrData = xlsx.utils.sheet_to_json(eisHfrSheet, { header: 1 });
 
-        // Test 3: Extract data
-        const test3Data = ivData.slice(1).map(row => ({
-          currentDensity: row[7],  // Column H
-          voltage: row[8]           // Column I
-        }));
+    // Test 4: Filter and map valid data
+    const test4Data = eisHfrData
+      .slice(1)  // Skip the header row
+      .map(row => ({
+        reZ: parseFloat(row[3]),  // Column D
+        imZ: parseFloat(row[4])   // Column E
+      }))
+      .filter(row => !isNaN(row.reZ) && !isNaN(row.imZ));  // Filter out invalid rows
 
-        // Process EIS_HFR sheet for Test 4
-            const eisHfrSheet = workbook.Sheets['EIS_HFR'];
-            const eisHfrData = xlsx.utils.sheet_to_json(eisHfrSheet, { header: 1 });
+    // Helper function to extract and validate numerical data from a specific cell
+    const getValidatedCellValue = (sheet, cell) => {
+      const cellObj = sheet[cell];
+      const value = cellObj ? parseFloat(cellObj.v) : null;
+      return !isNaN(value) ? value : null;
+    };
 
-            // Test 4: Filter and map valid data
-            test4Data = eisHfrData
-              .slice(1)  // Skip the header row
-              .map(row => ({
-                reZ: parseFloat(row[3]),  // Column D
-                imZ: parseFloat(row[4])   // Column E
-              }))
-              .filter(row => !isNaN(row.reZ) && !isNaN(row.imZ));  // Filter out invalid rows
-        //added now
+    // Helper function to convert column index to Excel column letters
+    const getColumnLetter = (colIndex) => {
+      let letter = '';
+      while (colIndex >= 0) {
+        letter = String.fromCharCode((colIndex % 26) + 65) + letter;
+        colIndex = Math.floor(colIndex / 26) - 1;
+      }
+      return letter;
+    };
+
+    // Loop through the columns P, W, AD, etc., checking for increments of 7
+    let baseColumnIndex = 'P'.charCodeAt(0) - 'A'.charCodeAt(0); // Start at column 'P'
+    let polCurveExists = true;
+    let step = 0;
+    const additionalPolCurves = [];
+
+    while (polCurveExists) {
+      // Calculate the column and cell in the current iteration
+      const currentColumnIndex = baseColumnIndex + step * 7;
+      const currentColumn = getColumnLetter(currentColumnIndex);
+      const pColumn = currentColumn + '2';
+      const pValue = getValidatedCellValue(ivSummarySheet, pColumn);
+
+      // Log the value of the current cell being checked
+      console.log(`Checking time column ${pColumn}: ${pValue}`);
+
+      if (pValue !== null) {
+        const hours = `${pValue} hrs`;
+
+        // Determine the current density and voltage columns
+        const currentDensityCol = getColumnLetter(currentColumnIndex + 1); // Q, X, AE, ...
+        const voltageCol = getColumnLetter(currentColumnIndex + 2); // R, Y, AF, ...
+
+        // Extract and validate current density and voltage data
+        const currentDensityData = ivData.slice(1)
+          .map(row => parseFloat(row[currentDensityCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
+          .filter(value => !isNaN(value));
+
+        const voltageData = ivData.slice(1)
+          .map(row => parseFloat(row[voltageCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
+          .filter(value => !isNaN(value));
+
+        // Store pol curve data
+        additionalPolCurves.push({
+          hours,
+          currentDensity: currentDensityData,
+          voltage: voltageData,
+        });
+
+        // Move to the next set of columns (increment step by 7)
+        step += 1;
+      } else {
+        polCurveExists = false;
+      }
+    }
 
     // Calculate test counts
-    // Test 1: Break-in
-    const test1Count = 1;
-
-    // Test 2: 1 mM Pol-Curve
+    const test1Count = 1; // Test 1: Break-in
     const ivSheets = workbook.SheetNames.filter(name => /^iV\d+$/.test(name));
     const test2Count = ivSheets.length ? Math.max(...ivSheets.map(name => parseInt(name.replace('iV', ''), 10))) - 1 : 1;
-
-    // Test 3: 10 mM PolCurve
     const cellH11 = ivSummarySheet ? xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })[10][7] : '';
     const test3Count = cellH11 === 'BoL 10 mM KOH F&R' ? 1 : 0;
-
-    // Test 4: 1 mM - EIS
     const test4Count = test2Count + 1;
 
     const counts = {
@@ -1897,6 +1944,7 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
       test4Count
     };
 
+    // Return the processed data
     res.json({
       message: 'Excel file processed successfully',
       dataAvailable: true,
@@ -1906,9 +1954,8 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
         steadyStateData10mM,
         polCurveDataDIW,
         polCurveData10mM,
-        test2Data,
-        test3Data,
-        test4Data
+        test4Data,
+        additionalPolCurves // Include additional pol curves in the response
       }
     });
   } catch (error) {
@@ -1916,6 +1963,8 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
     res.status(500).json({ message: 'Error processing Excel file', error });
   }
 });
+
+
 
 // Function to filter out undefined values
 function filterValidData(data) {
@@ -2097,39 +2146,6 @@ router.get('/steadystate-10mm', async (req, res) => {
   }
 });
 
-//router.get('/test4', async (req, res) => {
-//  try {
-//    const validData = test4Data
-//      .filter(d => typeof d.reZ === 'number' && !isNaN(d.reZ) &&
-//                   typeof d.imZ === 'number' && !isNaN(d.imZ))
-//      .sort((a, b) => a.reZ - b.reZ);
-//
-//    console.log(`Test 4: ${validData.length} valid data points`);
-//
-//    if (validData.length === 0) {
-//      return res.status(400).json({ message: 'No valid data points found for Test 4' });
-//    }
-//
-//    const xValues = validData.map(d => d.reZ);
-//    const yValues = validData.map(d => d.imZ);
-//
-//    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
-//
-//    const responseData = {
-//      scatterData: validData.map(d => ({ x: d.reZ, y: d.imZ })),
-//      lineData,
-//      xAxisLabel: "Re(Z) (Ohms)",
-//      yAxisLabel: "-Im(Z) (Ohms)",
-//      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
-//    };
-//
-//    res.json(responseData);
-//  } catch (error) {
-//    console.error('Error generating Test 4 chart:', error);
-//    res.status(500).json({ message: 'Error generating chart', error });
-//  }
-//});
-
 router.get('/test4', async (req, res) => {
   try {
     // Filter and validate the data
@@ -2175,5 +2191,69 @@ router.get('/test4', async (req, res) => {
   }
 });
 
+router.get('/durability-polcurve', async (req, res) => {
+  try {
+    // Check if iV Summary sheet exists
+    const ivSummarySheet = workbook.Sheets['iV Summary'];
+    if (!ivSummarySheet) {
+      return res.status(400).json({ message: 'iV Summary sheet not found' });
+    }
+
+    const polCurveData = [];
+
+    // Helper function to extract and validate numerical data from a specific cell
+    const getValidatedCellValue = (sheet, cell) => {
+      const cellObj = sheet[cell];
+      const value = cellObj ? parseFloat(cellObj.v) : null;
+      return !isNaN(value) ? value : null;
+    };
+
+    let columnOffset = 0;
+    let polCurveExists = true;
+
+    while (polCurveExists) {
+      const pCell = `P${2 + columnOffset}`;
+      const pValue = getValidatedCellValue(ivSummarySheet, pCell);
+
+      if (pValue !== null) {
+        const hours = `${pValue} hrs`;
+
+        // Extract and validate data for current density and voltage
+        const currentDensityCol = String.fromCharCode('Q'.charCodeAt(0) + columnOffset);
+        const voltageCol = String.fromCharCode('R'.charCodeAt(0) + columnOffset);
+
+        const currentDensityData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })
+          .slice(1)  // Skip header row
+          .map(row => parseFloat(row[currentDensityCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
+          .filter(value => !isNaN(value));  // Filter out non-numeric values
+
+        const voltageData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })
+          .slice(1)  // Skip header row
+          .map(row => parseFloat(row[voltageCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
+          .filter(value => !isNaN(value));  // Filter out non-numeric values
+
+        // Store pol curve data
+        polCurveData.push({
+          hours,
+          currentDensity: currentDensityData,
+          voltage: voltageData,
+        });
+
+        // Move to the next set of columns (7-column offset)
+        columnOffset += 7;
+      } else {
+        polCurveExists = false;
+      }
+    }
+
+    res.json({
+      message: 'Durability Pol Curves processed successfully',
+      polCurveData,
+    });
+  } catch (error) {
+    console.error('Error processing Durability Pol Curves:', error);
+    res.status(500).json({ message: 'Error processing Durability Pol Curves', error });
+  }
+});
 
 module.exports = router;

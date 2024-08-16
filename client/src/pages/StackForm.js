@@ -161,7 +161,7 @@ const StackForm = () => {
           </Form.Field>
         </Form.Group>
         <Divider section />
-        <Header as='h4'>Additional Info</Header>
+        <Header as='h4' className="h2headers">Additional Info</Header>
         <Form.Group widths='equal'>
           <Form.Field>
             <label>Cathode Part Number: </label>

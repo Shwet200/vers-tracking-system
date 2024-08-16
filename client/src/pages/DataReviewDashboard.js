@@ -226,7 +226,7 @@ const DataReviewDashboard = () => {
 
   return (
     <Container style={{ width: '100%', maxWidth: '1200px', margin: 'auto' }}>
-      <Header as='h3'>Data Review Dashboard</Header>
+      <Header as='h3' className="h2headers">Data Review Dashboard</Header>
       <Grid columns={3} stackable>
         <Grid.Row>
           <Grid.Column width={16}>
@@ -247,7 +247,7 @@ const DataReviewDashboard = () => {
         <Grid.Row>
           {/* First Section: Cell # and Test Table */}
           <Grid.Column width={5}>
-            <Header as='h3'>Cell #</Header>
+            <Header as='h3' className="h2headers">Cell #</Header>
             <Input
               placeholder='Enter Test Code'
               value={testCode}
@@ -269,7 +269,7 @@ const DataReviewDashboard = () => {
               </div>
             )}
 
-            <Header as='h3'>Test Table</Header>
+            <Header as='h3' className="h2headers">Test Table</Header>
             <Table celled>
               <Table.Header>
                 <Table.Row>
@@ -323,7 +323,7 @@ const DataReviewDashboard = () => {
 
           {/* Second Section: Performance Snapshot */}
           <Grid.Column width={5}>
-            <Header as='h3'>Performance Snapshot</Header>
+            <Header as='h3' className="h2headers">Performance Snapshot</Header>
             {performanceChartConfigs.map((config, index) => (
               <div key={index} style={{ marginBottom: '20px' }}>
                 <ChartComponent
@@ -337,7 +337,7 @@ const DataReviewDashboard = () => {
 
           {/* Third Section: Durability Trends */}
           <Grid.Column width={6}>
-            <Header as='h3'>Durability Trends</Header>
+            <Header as='h3' className="h2headers">Durability Trends</Header>
             <Grid>
               <Grid.Row columns={2}>
                 <Grid.Column>
