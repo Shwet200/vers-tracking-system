@@ -1843,15 +1843,31 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
     const ivData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 });
 
     // Extract relevant data for pol curves
-    const polCurveDataDIW = ivData.slice(1).map(row => ({ currentDensity: row[2], voltage: row[3] }));
-    const polCurveData10mM = ivData.slice(1).map(row => ({ currentDensity: row[7], voltage: row[8] }));
+    const polCurveDataDIW = ivData.slice(1).map(row => ({
+      currentDensity: parseFloat(row[2]),
+      voltage: parseFloat(row[3])
+    })).filter(data => !isNaN(data.currentDensity) && !isNaN(data.voltage)); // Filter out non-numeric values
+
+    const polCurveData10mM = ivData.slice(1).map(row => ({
+      currentDensity: parseFloat(row[7]),
+      voltage: parseFloat(row[8])
+    })).filter(data => !isNaN(data.currentDensity) && !isNaN(data.voltage)); // Filter out non-numeric values
+
+    console.log('polCurveDataDIW:', polCurveDataDIW);
 
     // Process Durability sheet for steady states
     const durabilitySheet = workbook.Sheets['Durability'];
     const durabilityData = xlsx.utils.sheet_to_json(durabilitySheet, { header: 1 }).slice(1);
 
-    const steadyStateDataDIW = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
-    const steadyStateData10mM = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
+    const steadyStateDataDIW = durabilityData.map(row => ({
+      time: parseFloat(row[6]),
+      cellPotential: parseFloat(row[4])
+    })).filter(data => !isNaN(data.time) && !isNaN(data.cellPotential)); // Filter out non-numeric values
+
+    const steadyStateData10mM = durabilityData.map(row => ({
+      time: parseFloat(row[6]),
+      cellPotential: parseFloat(row[4])
+    })).filter(data => !isNaN(data.time) && !isNaN(data.cellPotential)); // Filter out non-numeric values
 
     // Process EIS_HFR sheet for Test 4
     const eisHfrSheet = workbook.Sheets['EIS_HFR'];
@@ -1909,11 +1925,11 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
         // Extract and validate current density and voltage data
         const currentDensityData = ivData.slice(1)
           .map(row => parseFloat(row[currentDensityCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
-          .filter(value => !isNaN(value));
+          .filter(value => !isNaN(value)); // Filter out non-numeric values
 
         const voltageData = ivData.slice(1)
           .map(row => parseFloat(row[voltageCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
-          .filter(value => !isNaN(value));
+          .filter(value => !isNaN(value)); // Filter out non-numeric values
 
         // Store pol curve data
         additionalPolCurves.push({
@@ -1963,8 +1979,6 @@ router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
     res.status(500).json({ message: 'Error processing Excel file', error });
   }
 });
-
-
 
 // Function to filter out undefined values
 function filterValidData(data) {
@@ -2029,27 +2043,59 @@ function linearRegression(x, y) {
     lineData: x.map((xi) => ({ x: xi, y: slope * xi + intercept })),
   };
 }
+//
+//router.get('/polcurve-diw', async (req, res) => {
+//  try {
+//    const validData = polCurveDataDIW
+//      .filter(d => typeof d.currentDensity === 'number' && !isNaN(d.currentDensity) &&
+//                   typeof d.voltage === 'number' && !isNaN(d.voltage))
+//      .sort((a, b) => a.currentDensity - b.currentDensity);
+//
+//    console.log(`PolCurve with DIW: ${validData.length} valid data points`);
+//
+//    const xValues = validData.map(d => d.currentDensity);
+//    const yValues = validData.map(d => d.voltage);
+//
+//    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
+//
+//    const responseData = {
+//      scatterData: validData.map(d => ({ x: d.currentDensity, y: d.voltage })),
+//      lineData,
+//      xAxisLabel: 'Current Density (A/cm²)',
+//      yAxisLabel: 'Voltage (V)',
+//      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
+//    };
+//
+//    res.json(responseData);
+//  } catch (error) {
+//    console.error('Error generating PolCurve with DIW chart:', error);
+//    res.status(500).json({ message: 'Error generating chart', error });
+//  }
+//});
 
 router.get('/polcurve-diw', async (req, res) => {
   try {
+    // Filter and sort the data to ensure valid numerical entries
     const validData = polCurveDataDIW
       .filter(d => typeof d.currentDensity === 'number' && !isNaN(d.currentDensity) &&
                    typeof d.voltage === 'number' && !isNaN(d.voltage))
       .sort((a, b) => a.currentDensity - b.currentDensity);
 
-    console.log(`PolCurve with DIW: ${validData.length} valid data points`);
+    console.log('Valid Data for polCurveDataDIW:', validData); // Log this to see the filtered valid data
 
-    const xValues = validData.map(d => d.currentDensity);
-    const yValues = validData.map(d => d.voltage);
+    // Extract unique current densities for dropdown options
+    const uniqueCurrentDensities = [...new Set(validData.map(d => d.currentDensity))];
 
-    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
+    // Extract all current densities
+    const allCurrentDensities = validData.map(d => d.currentDensity);
 
+    // Prepare response data
     const responseData = {
       scatterData: validData.map(d => ({ x: d.currentDensity, y: d.voltage })),
-      lineData,
+      uniqueCurrentDensities,  // Send unique current densities separately
+      allCurrentDensities,     // Send all current densities separately
       xAxisLabel: 'Current Density (A/cm²)',
-      yAxisLabel: 'Voltage (V)',
-      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
+      yAxisLabel: 'Voltage (V)'
     };
 
     res.json(responseData);
@@ -2058,6 +2104,7 @@ router.get('/polcurve-diw', async (req, res) => {
     res.status(500).json({ message: 'Error generating chart', error });
   }
 });
+
 
 router.get('/polcurve-10mm', async (req, res) => {
   try {
@@ -2253,6 +2300,42 @@ router.get('/durability-polcurve', async (req, res) => {
   } catch (error) {
     console.error('Error processing Durability Pol Curves:', error);
     res.status(500).json({ message: 'Error processing Durability Pol Curves', error });
+  }
+});
+
+router.get('/polcurve-diw-time', async (req, res) => {
+  try {
+    const { currentDensity } = req.query; // Get the selected current density from the query parameters
+
+    if (!currentDensity) {
+      return res.status(400).json({ message: 'Current Density not provided' });
+    }
+
+    const cdValue = parseFloat(currentDensity);
+    if (isNaN(cdValue)) {
+      return res.status(400).json({ message: 'Invalid Current Density value' });
+    }
+
+    // Find the relevant voltage values for the selected current density across additionalPolCurves
+    const timeVoltagePairs = additionalPolCurves.map(curve => {
+      const voltageIndex = curve.currentDensity.indexOf(cdValue);
+      if (voltageIndex !== -1) {
+        return {
+          time: parseFloat(curve.hours), // Extract time from hours field
+          voltage: curve.voltage[voltageIndex],
+        };
+      }
+      return null;
+    }).filter(pair => pair !== null); // Filter out null pairs where the current density wasn't found
+
+    res.json({
+      xAxisLabel: 'Time (hr)',
+      yAxisLabel: 'Voltage (V)',
+      scatterData: timeVoltagePairs.map(pair => ({ x: pair.time, y: pair.voltage })),
+    });
+  } catch (error) {
+    console.error('Error generating Voltage vs Time chart:', error);
+    res.status(500).json({ message: 'Error generating chart', error });
   }
 });
 
