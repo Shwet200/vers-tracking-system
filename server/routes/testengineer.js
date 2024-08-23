@@ -178,518 +178,16 @@ const isWithinRange = (value, target, range) => {
   return value >= (target - range) && value <= (target + range);
 };
 
-//Almmmmmost works
-//// Log test results and mark test as completed
-//router.post('/log-results', auth, upload.single('excelFile'), async (req, res) => {
-//  console.log("Request body:", req.body); // Debug statement to print the entire request body
-//
-//    const { testResults, action } = req.body;
-//    // Check if testResults is a string and parse it if necessary
-//    let parsedTestResults = testResults;
-//    if (typeof testResults === 'string') {
-//      try {
-//        parsedTestResults = JSON.parse(testResults);
-//      } catch (e) {
-//        console.log("Invalid JSON format:", testResults);
-//        return res.status(400).json({ message: 'Invalid JSON format' });
-//      }
-//    }
-//
-//    if (!Array.isArray(parsedTestResults)) {
-//      console.log("Invalid test results format:", parsedTestResults);
-//      return res.status(400).json({ message: 'Invalid test results format' });
-//    }
-//
-//  const engineerEmail = req.user.email;
-//
-//  for (const result of parsedTestResults) {
-//    const {
-//      testRequestId, testCompleted, bolPh, comments,
-//      hardwareNumber, testStandChannel, startDate, endDate,
-//      daysUnderTest, notes, scratch, membraneThickness,
-//      bolConductivity, kohConductivity, kohPh, test_codes,
-//      cathode_xrf_pt_loading, cathode_xrf_ru_loading, cathode_ru_pt_mass, anode_fe_ni,
-//      updateAnodeFeNi, updateCathodeXrfPtLoading, updateCathodeXrfRuLoading, updateCathodeRuPtMass,
-//      slowPolCurveTestPerformed, recombinationLayerThickness, recombinationLayerPtLoading
-//    } = result;
-//
-//    console.log('Processing result:', result); // Debug log
-//
-//    //adding more logs
-//    console.log('testRequestId:', testRequestId);
-//    console.log('engineerEmail:', engineerEmail);
-//
-//    // Ensuring slowPolCurveTestPerformed is interpreted as a boolean
-//    const isSlowPolCurveTestPerformed = (slowPolCurveTestPerformed === 'true' || slowPolCurveTestPerformed === true);
-//    console.log('isSlowPolCurveTestPerformed:', isSlowPolCurveTestPerformed);
-//
-//    // Fetch anode and cathode numbers from test_requests table
-//    let anode, cathode;
-//    try {
-//      const fetchResult = await new Promise((resolve, reject) => {
-//        const sql = 'SELECT anode, cathode FROM test_requests WHERE id = ?';
-//        db.query(sql, [testRequestId], (err, result) => {
-//          if (err) return reject(err);
-//          resolve(result[0]);
-//        });
-//      });
-//      anode = fetchResult.anode;
-//      cathode = fetchResult.cathode;
-//    } catch (error) {
-//      console.error('Error fetching anode and cathode numbers:', error);
-//      return res.status(500).json({ message: 'Error fetching anode and cathode numbers', error });
-//    }
-//
-//    // Fetch anode data from Excel
-//    const anodeData = await fetchAnodeData(anode);
-//
-//    // Fetch anode IL loading data from Excel
-//    const anodeILLoadingData = await fetchAnodeILLoading(anode);
-//
-//    // Fetch cathode IL loading data from Excel
-//    const cathodeData = await fetchCathodeData(cathode);
-//
-//    // Initialize extracted data
-//    let extractedData = {};
-//
-//    // Initialize variables for X_over_*
-//    let X_over_02, X_over_1, X_over_2, X_over_1_back, X_over_02_back;
-//
-//    // Process the uploaded Excel file
-//    if (req.file) {
-//      console.log('Reading workbook');
-//      const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-//      const ivSheet = workbook.Sheets['iV Summary'];
-//      const eisSheet = workbook.Sheets['EIS_HFR'];
-//      const h2CrossoverSheet = workbook.Sheets['H2 Crossover'];
-//      const eis1VSheet = workbook.Sheets['EIS_1 V'];
-//      const slowPolCurveSheet = workbook.Sheets['Slow pol curve'];
-//
-//      if (!ivSheet || !eisSheet || !h2CrossoverSheet || !eis1VSheet || !slowPolCurveSheet) {
-//        return res.status(400).send('Required sheets not found');
-//      }
-//
-//      const parseSharepointData = (ivSheet, eisSheet, h2CrossoverSheet, eis1VSheet, slowPolCurveSheet) => {
-//        const getCellValue = (sheet, cell) => {
-//          const cellValue = sheet[cell];
-//          return cellValue ? cellValue.v : null;
-//        };
-//
-//        const b8 = getCellValue(ivSheet, 'B8');
-//        const i8 = getCellValue(ivSheet, 'I8');
-//        const b7 = getCellValue(ivSheet, 'B7');
-//        const i7 = getCellValue(ivSheet, 'I7');
-//
-//        let closestToZeroValueDIW = Infinity;
-//        let closestToZeroValue10mM = Infinity;
-//        let hfrDiwValue = null;
-//        let hfr10mMValue = null;
-//
-//        const eisRange = xlsx.utils.decode_range(eisSheet['!ref']);
-//        for (let row = eisRange.s.r + 1; row <= eisRange.e.r; row++) {
-//          // For HFR_DIW
-//          const cellAddressE = xlsx.utils.encode_cell({ r: row, c: 4 });
-//          const cellAddressD = xlsx.utils.encode_cell({ r: row, c: 3 });
-//          const cellValueE = eisSheet[cellAddressE] ? eisSheet[cellAddressE].v : null;
-//
-//          if (cellValueE !== null && typeof cellValueE === 'number' && Math.abs(cellValueE) < Math.abs(closestToZeroValueDIW)) {
-//            closestToZeroValueDIW = cellValueE;
-//            hfrDiwValue = eisSheet[cellAddressD] ? eisSheet[cellAddressD].v * 1000 : null;
-//          }
-//
-//          // For HFR_10mM
-//          const cellAddressO = xlsx.utils.encode_cell({ r: row, c: 14 });
-//          const cellAddressN = xlsx.utils.encode_cell({ r: row, c: 13 });
-//          const cellValueO = eisSheet[cellAddressO] ? eisSheet[cellAddressO].v : null;
-//
-//          if (cellValueO !== null && typeof cellValueO === 'number' && Math.abs(cellValueO) < Math.abs(closestToZeroValue10mM)) {
-//            closestToZeroValue10mM = cellValueO;
-//            hfr10mMValue = eisSheet[cellAddressN] ? eisSheet[cellAddressN].v * 1000 : null;
-//          }
-//        }
-//
-//        // Define the function to get average values
-//        const calculateAverage = (values) => {
-//          const sum = values.reduce((acc, val) => acc + val, 0);
-//          return sum / values.length;
-//        };
-//
-//        // Define the function to find values in a column within a range
-//        const findNthValueInColumn = (sheet, column, targetValue, occurrence, range) => {
-//          const rangeDecoded = xlsx.utils.decode_range(sheet['!ref']);
-//          let count = 0;
-//          for (let row = rangeDecoded.s.r + 1; row <= rangeDecoded.e.r; row++) {
-//            const cellAddress = xlsx.utils.encode_cell({ r: row, c: column });
-//            const cellValue = sheet[cellAddress] ? parseFloat(sheet[cellAddress].v) : null;
-//
-//            if (cellValue !== null && isWithinRange(cellValue, targetValue, range)) {
-//              count++;
-//              if (count === occurrence) {
-//                console.log(`Found target value ${targetValue} within range for the ${occurrence} time in row ${row + 1}`);
-//                return row;
-//              }
-//            }
-//          }
-//          console.log(`Target value ${targetValue} not found ${occurrence} times within range in column ${xlsx.utils.encode_col(column)}`);
-//          return null;
-//        };
-//
-//        if (isSlowPolCurveTestPerformed) {
-//          console.log('Executing Slow Pol Curve logic');
-//          // Logic for Slow pol curve sheet
-//          const rowFor0_2 = findNthValueInColumn(slowPolCurveSheet, 26, 0.2, 1, 0.01);
-//          const rowFor1 = findNthValueInColumn(slowPolCurveSheet, 26, 1, 1, 0.01);
-//          const rowFor2 = findNthValueInColumn(slowPolCurveSheet, 26, 2, 1, 0.01);
-//          const rowFor1_back = findNthValueInColumn(slowPolCurveSheet, 26, 1, 2, 0.01);
-//          const rowFor0_2_back = findNthValueInColumn(slowPolCurveSheet, 26, 0.2, 2, 0.01);
-//
-//          X_over_02 = rowFor0_2 !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor0_2 + 1}`) : null;
-//          X_over_1 = rowFor1 !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor1 + 1}`) : null;
-//          X_over_2 = rowFor2 !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor2 + 1}`) : null;
-//          X_over_1_back = rowFor1_back !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor1_back + 1}`) : null;
-//          X_over_02_back = rowFor0_2_back !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor0_2_back + 1}`) : null;
-//        } else {
-//          console.log('Executing H2 Crossover logic');
-//          // H2 Crossover Sheet Parsing Logic
-//          const columnEIdx = 4;  // 'Current Density(A/cm2)' corresponds to index 4
-//          const columnLIdx = 11;  // 'Crossover Current Density (mA/cm2)' corresponds to index 11
-//
-//          const findValuesInRange = (sheet, startIdx, lowerBound, upperBound, stopBelow, stopAbove) => {
-//            const valuesInRange = [];
-//            const range = xlsx.utils.decode_range(sheet['!ref']);
-//            for (let idx = startIdx; idx <= range.e.r; idx++) {
-//              const cellAddressE = xlsx.utils.encode_cell({ r: idx, c: columnEIdx });
-//              const cellAddressF = xlsx.utils.encode_cell({ r: idx, c: columnLIdx });
-//              const valueE = sheet[cellAddressE] ? parseFloat(sheet[cellAddressE].v) : null;
-//              if (isNaN(valueE)) continue;
-//              if (lowerBound <= valueE && valueE <= upperBound) {
-//                valuesInRange.push([sheet[cellAddressF] ? parseFloat(sheet[cellAddressF].v) : null, idx]);
-//              }
-//              if (valuesInRange.length >= 3 && (valueE < stopBelow || valueE > stopAbove)) {
-//                break;
-//              }
-//            }
-//            return valuesInRange.slice(-3);
-//          };
-//
-//          let rowNumbersFirst, rowNumbersSecond, rowNumbersThird, rowNumbersFourth, rowNumbersFinal;
-//
-//          const search0_2 = () => {
-//            rowNumbersFirst = findValuesInRange(h2CrossoverSheet, 0, 0.195, 0.205, 0.195, 0.205);
-//            if (rowNumbersFirst.length < 3) {
-//              console.log("Less than 3 values found in the first search within the specified range");
-//            } else {
-//              const correspondingValuesFirst = rowNumbersFirst.map(val => val[0]);
-//              X_over_02 = calculateAverage(correspondingValuesFirst);
-//              rowNumbersFirst = rowNumbersFirst.map(val => val[1]);
-//              console.log("First search results:");
-//              console.log("Corresponding values:", correspondingValuesFirst);
-//              console.log("Row numbers:", rowNumbersFirst);
-//            }
-//          };
-//
-//          const search1 = () => {
-//            if (rowNumbersFirst && rowNumbersFirst.length > 0) {
-//              const startIdx = rowNumbersFirst[rowNumbersFirst.length - 1] + 1;
-//              rowNumbersSecond = findValuesInRange(h2CrossoverSheet, startIdx, 0.975, 1.025, 0.975, 1.025);
-//              if (rowNumbersSecond.length < 3) {
-//                console.log("Less than 3 values found for the second target value within the specified range");
-//              } else {
-//                const correspondingValuesSecond = rowNumbersSecond.map(val => val[0]);
-//                X_over_1 = calculateAverage(correspondingValuesSecond);
-//                rowNumbersSecond = rowNumbersSecond.map(val => val[1]);
-//                console.log("Second search results:");
-//                console.log("Corresponding values:", correspondingValuesSecond);
-//                console.log("Row numbers:", rowNumbersSecond);
-//              }
-//            }
-//          };
-//
-//          const search2 = () => {
-//            if (rowNumbersSecond && rowNumbersSecond.length > 0) {
-//              const startIdx = rowNumbersSecond[rowNumbersSecond.length - 1] + 1;
-//              rowNumbersThird = findValuesInRange(h2CrossoverSheet, startIdx, 1.975, 2.025, 1.975, 2.025);
-//              if (rowNumbersThird.length < 3) {
-//                console.log("Less than 3 values found in the third search within the specified range");
-//              } else {
-//                const correspondingValuesThird = rowNumbersThird.map(val => val[0]);
-//                X_over_2 = calculateAverage(correspondingValuesThird);
-//                rowNumbersThird = rowNumbersThird.map(val => val[1]);
-//                console.log("Third search results:");
-//                console.log("Corresponding values:", correspondingValuesThird);
-//                console.log("Row numbers:", rowNumbersThird);
-//              }
-//            }
-//          };
-//
-//          const searchAgain = () => {
-//            if (rowNumbersThird && rowNumbersThird.length > 0) {
-//              const startIdx = rowNumbersThird[rowNumbersThird.length - 1] + 1;
-//              rowNumbersFourth = findValuesInRange(h2CrossoverSheet, startIdx, 0.975, 1.025, 0.975, 1.025);
-//              if (rowNumbersFourth.length < 3) {
-//                console.log("Less than 3 values found in the fourth search within the specified range");
-//              } else {
-//                const correspondingValuesFourth = rowNumbersFourth.map(val => val[0]);
-//                X_over_1_back = calculateAverage(correspondingValuesFourth);
-//                rowNumbersFourth = rowNumbersFourth.map(val => val[1]);
-//                console.log("Fourth search results:");
-//                console.log("Corresponding values:", correspondingValuesFourth);
-//                console.log("Row numbers:", rowNumbersFourth);
-//              }
-//            }
-//          };
-//
-//          const finalSearch = () => {
-//            if (rowNumbersFourth && rowNumbersFourth.length > 0) {
-//              const startIdx = rowNumbersFourth[rowNumbersFourth.length - 1] + 1;
-//              rowNumbersFinal = findValuesInRange(h2CrossoverSheet, startIdx, 0.195, 0.205, 0.195, 0.205);
-//              if (rowNumbersFinal.length < 3) {
-//                console.log("Less than 3 values found in the final search within the specified range");
-//              } else {
-//                const correspondingValuesFinal = rowNumbersFinal.map(val => val[0]);
-//                X_over_02_back = calculateAverage(correspondingValuesFinal);
-//                rowNumbersFinal = rowNumbersFinal.map(val => val[1]);
-//                console.log("Final search results:");
-//                console.log("Corresponding values:", correspondingValuesFinal);
-//                console.log("Row numbers:", rowNumbersFinal);
-//              }
-//            }
-//          };
-//
-//          // Execute the search functions
-//          search0_2();
-//          search1();
-//          search2();
-//          searchAgain();
-//          finalSearch();
-//
-//          console.log("X_over_02:", X_over_02);
-//          console.log("X_over_1:", X_over_1);
-//          console.log("X_over_2:", X_over_2);
-//          console.log("X_over_1_back:", X_over_1_back);
-//          console.log("X_over_02_back:", X_over_02_back);
-//        }
-//
-//        // Logic for E @ 1mA
-//        let closestToOneDIW = Infinity;
-//        let e_at_1_mA_DIW = null;
-//
-//        let closestToOne10mM = Infinity;
-//        let e_at_1_mA_10mM = null;
-//
-//        const ivRange = xlsx.utils.decode_range(ivSheet['!ref']);
-//        for (let row = ivRange.s.r + 1; row <= ivRange.e.r; row++) {
-//          const cellAddressC = xlsx.utils.encode_cell({ r: row, c: 2 });
-//          const cellAddressD = xlsx.utils.encode_cell({ r: row, c: 3 });
-//          const cellValueC = ivSheet[cellAddressC] ? ivSheet[cellAddressC].v * 1000 : null;
-//
-//          if (cellValueC !== null && typeof cellValueC === 'number' && Math.abs(cellValueC - 1) < Math.abs(closestToOneDIW - 1)) {
-//            closestToOneDIW = cellValueC;
-//            e_at_1_mA_DIW = ivSheet[cellAddressD] ? ivSheet[cellAddressD].v : null;
-//          }
-//
-//          const cellAddressJ = xlsx.utils.encode_cell({ r: row, c: 9 });
-//          const cellAddressK = xlsx.utils.encode_cell({ r: row, c: 10 });
-//          const cellValueJ = ivSheet[cellAddressJ] ? ivSheet[cellAddressJ].v * 1000 : null;
-//
-//          if (cellValueJ !== null && typeof cellValueJ === 'number' && Math.abs(cellValueJ - 1) < Math.abs(closestToOne10mM - 1)) {
-//            closestToOne10mM = cellValueJ;
-//            e_at_1_mA_10mM = ivSheet[cellAddressK] ? ivSheet[cellAddressK].v : null;
-//          }
-//        }
-//
-//        return {
-//          i_at_1_8_10mM: i8,
-//          i_at_1_8_DIW: b8,
-//          E100_DIW: b7,
-//          E100_10mM: i7,
-//          HFR_DIW: hfrDiwValue,
-//          HFR_10mM: hfr10mMValue,
-//          fraction_q_touching_membrane: getCellValue(eis1VSheet, 'H6'),
-//          q_int_frac_diw_10mM_koh: getCellValue(eis1VSheet, 'R6'),
-//          q: getCellValue(eis1VSheet, 'H4'),
-//          phi: getCellValue(eis1VSheet, 'H5'),
-//          eir: getCellValue(eis1VSheet, 'H3'),
-//          effective_ionic_conductivity: getCellValue(eis1VSheet, 'H9'),
-//          e_at_1_mA_DIW: e_at_1_mA_DIW,
-//          e_at_1_mA_10mM: e_at_1_mA_10mM,
-//          X_over_02: X_over_02,
-//          X_over_1: X_over_1,
-//          X_over_2: X_over_2,
-//          X_over_1_back: X_over_1_back,
-//          X_over_02_back: X_over_02_back
-//        };
-//      };
-//
-//      extractedData = parseSharepointData(ivSheet, eisSheet, h2CrossoverSheet, eis1VSheet, slowPolCurveSheet);
-//    }
-//
-//    // Calculate cathode_ru_pt_mass based on updated values
-//    const cathodePtLoading = updateCathodeXrfPtLoading === 'yes' ? parseFloat(cathode_xrf_pt_loading) : parseFloat(cathodeData.cathode_xrf_pt_loading);
-//    const cathodeRuLoading = updateCathodeXrfRuLoading === 'yes' ? parseFloat(cathode_xrf_ru_loading) : parseFloat(cathodeData.cathode_xrf_ru_loading);
-//    const calculatedCathodeRuPtMass = cathodeRuLoading / (cathodePtLoading || 1);
-//
-//    // Combine form data, guide data and extracted data
-//    const data = {
-//      testRequestId,
-//      engineerEmail,
-//      testCompleted: testCompleted ? 1 : 0,
-//      bolPh,
-//      comments,
-//      hardwareNumber,
-//      testStandChannel,
-//      startDate,
-//      endDate,
-//      daysUnderTest,
-//      notes,
-//      scratch,
-//      membraneThickness,
-//      bolConductivity,
-//      kohConductivity,
-//      kohPh,
-//      test_codes,
-//      recombinationLayerThickness: recombinationLayerThickness || 'N/A',
-//      recombinationLayerPtLoading: recombinationLayerPtLoading || 'N/A',
-//      e_at_1_mA_DIW: extractedData.e_at_1_mA_DIW,
-//      e_at_1_mA_10mM: extractedData.e_at_1_mA_10mM,
-//      cathode_xrf_pt_loading: updateCathodeXrfPtLoading === 'yes' ? parseFloat(cathode_xrf_pt_loading) : cathodeData.cathode_xrf_pt_loading,
-//      cathode_xrf_ru_loading: updateCathodeXrfRuLoading === 'yes' ? parseFloat(cathode_xrf_ru_loading) : cathodeData.cathode_xrf_ru_loading,
-//      cathode_ru_pt_mass: updateCathodeRuPtMass === 'yes' ? parseFloat(cathode_ru_pt_mass) : cathodeData.cathode_ru_pt_mass,
-//      anode_fe_ni: updateAnodeFeNi === 'yes' ? parseFloat(anode_fe_ni) : anodeILLoadingData.anode_fe_ni,
-//      X_over_02,
-//      X_over_1,
-//      X_over_2,
-//      X_over_1_back,
-//      X_over_02_back,
-//      ...extractedData,
-//      ...anodeData,
-//      ...anodeILLoadingData,
-//      ...cathodeData,
-//    };
-//
-//    console.log("Data to be inserted into test_results:", data);
-//
-//    // Insert test results
-//    const insertSql = `
-//    INSERT INTO test_results
-//
-//      (testRequestId, engineerEmail, testCompleted, bolPh, comments, hardwareNumber,
-//      testStandChannel, startDate, endDate, daysUnderTest, notes, scratch, membraneThickness,
-//      bolConductivity, kohConductivity, kohPh, test_codes, cathode_xrf_pt_loading, cathode_xrf_ru_loading,
-//      cathode_ru_pt_mass, anode_fe_ni,
-//      i_at_1_8_v_diw, i_at_1_8_v_10mM_koh, e_at_100mAcm2_diw,
-//      e_at_100mAcm2_10mM_koh, hfr_diw, hfr_10mM_koh, eir, q, phi, fraction_q_touching_membrane,
-//      effective_ionic_conductivity, q_int_frac_diw_10mM_koh, anode_il_loading, cathode_il_loading,
-//      e_at_100mAcm2, e_at_1Acm2, e3_n_at_20mAcm2, e3_tafel_slope, X_over_02,
-//      X_over_1, X_over_2, X_over_1_back, X_over_02_back, recombinationLayerThickness, recombinationLayerPtLoading,
-//      e_at_1_mA_DIW, e_at_1_mA_10mM, loggedAt)
-//      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-//      ON DUPLICATE KEY UPDATE
-//      engineerEmail = VALUES(engineerEmail), testCompleted = VALUES(testCompleted), bolPh = VALUES(bolPh), comments = VALUES(comments),
-//      hardwareNumber = VALUES(hardwareNumber), testStandChannel = VALUES(testStandChannel), startDate = VALUES(startDate), endDate = VALUES(endDate),
-//      daysUnderTest = VALUES(daysUnderTest), notes = VALUES(notes), scratch = VALUES(scratch), membraneThickness = VALUES(membraneThickness),
-//      bolConductivity = VALUES(bolConductivity), kohConductivity = VALUES(kohConductivity), kohPh = VALUES(kohPh), test_codes = VALUES(test_codes),
-//      cathode_xrf_pt_loading = VALUES(cathode_xrf_pt_loading), cathode_xrf_ru_loading = VALUES(cathode_xrf_ru_loading),
-//      cathode_ru_pt_mass = VALUES(cathode_ru_pt_mass), anode_fe_ni = VALUES(anode_fe_ni), i_at_1_8_v_diw = VALUES(i_at_1_8_v_diw),
-//      i_at_1_8_v_10mM_koh = VALUES(i_at_1_8_v_10mM_koh), e_at_100mAcm2_diw = VALUES(e_at_100mAcm2_diw), e_at_100mAcm2_10mM_koh = VALUES(e_at_100mAcm2_10mM_koh),
-//      hfr_diw = VALUES(hfr_diw), hfr_10mM_koh = VALUES(hfr_10mM_koh), eir = VALUES(eir), q = VALUES(q), phi = VALUES(phi),
-//      fraction_q_touching_membrane = VALUES(fraction_q_touching_membrane), effective_ionic_conductivity = VALUES(effective_ionic_conductivity),
-//      q_int_frac_diw_10mM_koh = VALUES(q_int_frac_diw_10mM_koh), anode_il_loading = VALUES(anode_il_loading), cathode_il_loading = VALUES(cathode_il_loading),
-//      e_at_100mAcm2 = VALUES(e_at_100mAcm2), e_at_1Acm2 = VALUES(e_at_1Acm2), e3_n_at_20mAcm2 = VALUES(e3_n_at_20mAcm2), e3_tafel_slope = VALUES(e3_tafel_slope),
-//      X_over_02 = VALUES(X_over_02), X_over_1 = VALUES(X_over_1), X_over_2 = VALUES(X_over_2), X_over_1_back = VALUES(X_over_1_back),
-//      X_over_02_back = VALUES(X_over_02_back), recombinationLayerThickness = VALUES(recombinationLayerThickness),
-//      recombinationLayerPtLoading = VALUES(recombinationLayerPtLoading), e_at_1_mA_DIW = VALUES(e_at_1_mA_DIW), e_at_1_mA_10mM = VALUES(e_at_1_mA_10mM),
-//      loggedAt = VALUES(loggedAt)`;
-//
-//    const values = [
-//      data.testRequestId, data.engineerEmail, data.testCompleted, data.bolPh, data.comments, data.hardwareNumber,
-//      data.testStandChannel, data.startDate, data.endDate, data.daysUnderTest, data.notes, data.scratch, data.membraneThickness,
-//      data.bolConductivity, data.kohConductivity, data.kohPh, data.test_codes, data.cathode_xrf_pt_loading, data.cathode_xrf_ru_loading,
-//      data.cathode_ru_pt_mass, data.anode_fe_ni,
-//      data.i_at_1_8_DIW, data.i_at_1_8_10mM, data.E100_DIW,
-//      data.E100_10mM, data.HFR_DIW, data.HFR_10mM, data.eir, data.q, data.phi, data.fraction_q_touching_membrane,
-//      data.effective_ionic_conductivity, data.q_int_frac_diw_10mM_koh, data.anode_il_loading, data.cathode_il_loading,
-//      data.e_at_100mAcm2, data.e_at_1Acm2, data.e3_n_at_20mAcm2, data.e3_tafel_slope,
-//      data.X_over_02, data.X_over_1, data.X_over_2, data.X_over_1_back, data.X_over_02_back, data.recombinationLayerThickness, data.recombinationLayerPtLoading,
-//      data.e_at_1_mA_DIW, data.e_at_1_mA_10mM
-//    ];
-//
-//    await new Promise((resolve, reject) => {
-//      db.query(insertSql, values, (err, result) => {
-//        if (err) {
-//          console.error('Database error:', err);
-//          return reject(err);
-//        }
-//        resolve(result);
-//      });
-//    });
-//
-//    if (action === 'complete') {
-//      // After inserting into test_results, insert into display_data
-//      const displayDataSql = `
-//        INSERT INTO display_data (
-//          test_codes, anode, cathode, membrane, owner, hardwareNumber, testStandChannel, startDate, endDate,
-//          daysUnderTest, notes, baseline, scratch, membraneThickness, recombination_layer_thickness,
-//          recombination_layer_pt_loading, cathode_xrf_pt_loading, cathode_xrf_ru_loading, cathode_ru_pt_mass,
-//          anode_fe_ni, bolConductivity, bolPh, kohConductivity, kohPh, i_at_1_8_v_diw, i_at_1_8_v_10mM_koh,
-//          e3_n_at_20mAcm2, e3_tafel_slope, e_at_100mAcm2_diw, e_at_100mAcm2_10mM_koh,
-//          hfr_diw, hfr_10mM_koh, eir, q, phi, fraction_q_touching_membrane, effective_ionic_conductivity,
-//          q_int_frac_diw_10mM_koh, anode_il_loading, cathode_il_loading,
-//          e_at_100mAcm2, e_at_1Acm2, xover_cd_at_0A_0barg, xover_cd_at_1Acm2_0barg, xover_cd_at_0A_1_5barg, xover_cd_at_1Acm2_1_5barg
-//        )
-//        SELECT
-//          trr.test_codes, tr.anode, tr.cathode, tr.membrane, tr.owner, trr.hardwareNumber, trr.testStandChannel, trr.startDate, trr.endDate,
-//          trr.daysUnderTest, trr.notes, tr.baseline, trr.scratch, trr.membraneThickness, trr.recombination_layer_thickness,
-//          trr.recombination_layer_pt_loading, trr.cathode_xrf_pt_loading, trr.cathode_xrf_ru_loading, trr.cathode_ru_pt_mass,
-//          trr.anode_fe_ni, trr.bolConductivity, trr.bolPh, trr.kohConductivity, trr.kohPh, trr.i_at_1_8_v_diw, trr.i_at_1_8_v_10mM_koh,
-//          trr.e3_n_at_20mAcm2, trr.e3_tafel_slope, trr.e_at_100mAcm2_diw, trr.e_at_100mAcm2_10mM_koh,
-//          trr.hfr_diw, trr.hfr_10mM_koh, trr.eir, trr.q, trr.phi, trr.fraction_q_touching_membrane, trr.effective_ionic_conductivity,
-//          trr.q_int_frac_diw_10mM_koh, trr.anode_il_loading, trr.cathode_il_loading,
-//          trr.e_at_100mAcm2, trr.e_at_1Acm2, trr.xover_cd_at_0A_0barg, trr.xover_cd_at_1Acm2_0barg, trr.xover_cd_at_0A_1_5barg, trr.xover_cd_at_1Acm2_1_5barg
-//        FROM
-//          test_requests tr
-//        JOIN test_results trr ON tr.id = trr.testRequestId
-//        WHERE
-//          trr.testRequestId = ?;
-//        `;
-//
-//      const displayDataValues = [data.testRequestId];
-//
-//      await new Promise((resolve, reject) => {
-//        db.query(displayDataSql, displayDataValues, (displayErr) => {
-//          if (displayErr) {
-//            console.error('Database error inserting into display_data:', displayErr);
-//            return reject(displayErr);
-//          }
-//          resolve();
-//        });
-//      });
-//
-//      // Update test_requests to mark as completed
-//      const updateSql = 'UPDATE test_requests SET status = "completed" WHERE id = ?';
-//      await new Promise((resolve, reject) => {
-//        db.query(updateSql, [testRequestId], (updateErr) => {
-//          if (updateErr) {
-//            console.error('Database error updating test_requests:', updateErr);
-//            return reject(updateErr);
-//          }
-//          resolve();
-//        });
-//      });
-//
-//      res.json({ message: 'Test results logged, test marked as completed, and data populated in display_data' });
-//    } else {
-//      res.json({ message: 'Test results saved successfully' });
-//    }
-//  }
-//});
-//almmmmmmmost works
-
 // Function to format date strings into 'YYYY-MM-DD'
 const formatDateForMySQL = (dateString) => {
   if (!dateString) return null;
   const date = new Date(dateString);
   return isNaN(date) ? null : date.toISOString().split('T')[0];
+};
+
+// Utility function to format today's date
+const getFormattedTodayDate = () => {
+  return new Date().toISOString();
 };
 
 // Log test results and mark test as completed
@@ -728,40 +226,95 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       slowPolCurveTestPerformed, recombinationLayerThickness, recombinationLayerPtLoading
     } = result;
 
-    console.log('Processing result:', result); // Debug log
+    let cathode, anode;
 
-    // Adding more logs
-    console.log('testRequestId:', testRequestId);
-    console.log('engineerEmail:', engineerEmail);
+      try {
+        const fetchResult = await new Promise((resolve, reject) => {
+          const sql = 'SELECT anode, cathode FROM test_requests WHERE id = ?';
+          db.query(sql, [testRequestId], (err, result) => {
+            if (err) return reject(err);
+            if (result.length === 0) return reject(new Error('No test request found with the given id'));
+            resolve(result[0]);
+          });
+        });
+        anode = fetchResult.anode;
+        cathode = fetchResult.cathode;
+        console.log('Fetched anode:', anode, 'Fetched cathode:', cathode);
+      } catch (error) {
+        console.error('Error fetching anode and cathode numbers:', error);
+        return res.status(500).json({ message: 'Error fetching anode and cathode numbers', error });
+      }
+
+      let finalCathodeXrfPtLoading = cathode_xrf_pt_loading;
+      let finalCathodeXrfRuLoading = cathode_xrf_ru_loading;
+      let finalCathodeRuPtMass = cathode_ru_pt_mass;
+      let finalAnodeFeNi = anode_fe_ni;
+
+      if (cathode) {
+        const cathodeData = await fetchCathodeData(cathode);
+
+        if (!updateCathodeXrfPtLoading && !finalCathodeXrfPtLoading) {
+          finalCathodeXrfPtLoading = cathodeData.cathode_xrf_pt_loading;
+        }
+
+        if (!updateCathodeXrfRuLoading && !finalCathodeXrfRuLoading) {
+          finalCathodeXrfRuLoading = cathodeData.cathode_xrf_ru_loading;
+        }
+
+        if (!updateCathodeRuPtMass && (finalCathodeRuPtMass === null || isNaN(finalCathodeRuPtMass))) {
+          finalCathodeRuPtMass = finalCathodeXrfRuLoading && finalCathodeXrfPtLoading ? finalCathodeXrfRuLoading / finalCathodeXrfPtLoading : null;
+        }
+      } else {
+        console.error('Error: Cathode value is not defined.');
+      }
+
+      if (anode) {
+        const anodeData = await fetchAnodeILLoading(anode);
+
+        if (!updateAnodeFeNi && !finalAnodeFeNi) {
+          finalAnodeFeNi = anodeData.anode_fe_ni;
+        }
+      } else {
+        console.error('Error: Anode value is not defined.');
+      }
+
+      console.log('Final values:', finalCathodeXrfPtLoading, finalCathodeXrfRuLoading, finalCathodeRuPtMass, finalAnodeFeNi);
+
+      result.cathode_xrf_pt_loading = finalCathodeXrfPtLoading;
+        result.cathode_xrf_ru_loading = finalCathodeXrfRuLoading;
+        result.cathode_ru_pt_mass = finalCathodeRuPtMass;
+        result.anode_fe_ni = finalAnodeFeNi;
+
+    console.log('Processing result:', result); // Debug log
 
     // Ensuring slowPolCurveTestPerformed is interpreted as a boolean
     const isSlowPolCurveTestPerformed = (slowPolCurveTestPerformed === 'true' || slowPolCurveTestPerformed === true);
     console.log('isSlowPolCurveTestPerformed:', isSlowPolCurveTestPerformed);
 
     // Fetch anode and cathode numbers from test_requests table
-    let anode, cathode;
-    try {
-      const fetchResult = await new Promise((resolve, reject) => {
-        const sql = 'SELECT anode, cathode FROM test_requests WHERE id = ?';
-        db.query(sql, [testRequestId], (err, result) => {
-          if (err) {
-            console.log('SQL error:', err);
-            return reject(err);
-          }
-          console.log('Query result:', result);
-          if (result.length === 0) {
-            return reject(new Error('No test request found with the given id'));
-          }
-          resolve(result[0]);
-        });
-      });
-      anode = fetchResult.anode;
-      cathode = fetchResult.cathode;
-      console.log('Fetched anode:', anode, 'Fetched cathode:', cathode);
-    } catch (error) {
-      console.error('Error fetching anode and cathode numbers:', error);
-      return res.status(500).json({ message: 'Error fetching anode and cathode numbers', error });
-    }
+ //   let anode, cathode;
+//    try {
+//      const fetchResult = await new Promise((resolve, reject) => {
+//        const sql = 'SELECT anode, cathode FROM test_requests WHERE id = ?';
+//        db.query(sql, [testRequestId], (err, result) => {
+//          if (err) {
+//            console.log('SQL error:', err);
+//            return reject(err);
+//          }
+//          console.log('Query result:', result);
+//          if (result.length === 0) {
+//            return reject(new Error('No test request found with the given id'));
+//          }
+//          resolve(result[0]);
+//        });
+//      });
+//      anode = fetchResult.anode;
+//      cathode = fetchResult.cathode;
+//      console.log('Fetched anode:', anode, 'Fetched cathode:', cathode);
+//    } catch (error) {
+//      console.error('Error fetching anode and cathode numbers:', error);
+//      return res.status(500).json({ message: 'Error fetching anode and cathode numbers', error });
+//    }
 
     // Fetch anode data from Excel
     const anodeData = await fetchAnodeData(anode);
@@ -1047,16 +600,18 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       extractedData = parseSharepointData(ivSheet, eisSheet, h2CrossoverSheet, eis1VSheet, slowPolCurveSheet);
     }
 
-    // Calculate final values
-        const finalAnodeFeNi = updateAnodeFeNi ? (isNaN(parseFloat(anode_fe_ni)) ? null : parseFloat(anode_fe_ni)) : null;
-        const finalCathodeXrfPtLoading = updateCathodeXrfPtLoading ? (isNaN(parseFloat(cathode_xrf_pt_loading)) ? null : parseFloat(cathode_xrf_pt_loading)) : null;
-        const finalCathodeXrfRuLoading = updateCathodeXrfRuLoading ? (isNaN(parseFloat(cathode_xrf_ru_loading)) ? null : parseFloat(cathode_xrf_ru_loading)) : null;
-        const finalCathodeRuPtMass = finalCathodeXrfRuLoading / finalCathodeXrfPtLoading
-        console.log('Final values:', finalCathodeXrfPtLoading, finalCathodeXrfRuLoading, finalCathodeRuPtMass, finalAnodeFeNi);
+//    // Calculate final values
+//        finalAnodeFeNi = updateAnodeFeNi ? (isNaN(parseFloat(anode_fe_ni)) ? null : parseFloat(anode_fe_ni)) : null;
+//        finalCathodeXrfPtLoading = updateCathodeXrfPtLoading ? (isNaN(parseFloat(cathode_xrf_pt_loading)) ? null : parseFloat(cathode_xrf_pt_loading)) : null;
+//        finalCathodeXrfRuLoading = updateCathodeXrfRuLoading ? (isNaN(parseFloat(cathode_xrf_ru_loading)) ? null : parseFloat(cathode_xrf_ru_loading)) : null;
+//        finalCathodeRuPtMass = finalCathodeXrfRuLoading / finalCathodeXrfPtLoading
+//        console.log('Final values:', finalCathodeXrfPtLoading, finalCathodeXrfRuLoading, finalCathodeRuPtMass, finalAnodeFeNi);
+
 
     // Sanitize and format dates for MySQL
     const formattedStartDate = formatDateForMySQL(result.startDate);
     const formattedEndDate = formatDateForMySQL(result.endDate);
+
 
     // Combine form data, guide data and extracted data
     const data = {
@@ -1067,8 +622,8 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       comments,
       hardwareNumber,
       testStandChannel,
-      startDate: formattedStartDate,  // Use formatted date
-      endDate: formattedEndDate,      // Use formatted date
+      startDate: formattedStartDate,  // Used final instead of formatted
+      endDate: formattedEndDate,      // Used final instead of formatted
       daysUnderTest,
       notes,
       scratch,
@@ -1082,31 +637,40 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
       e_at_1_mA_DIW: extractedData.e_at_1_mA_DIW,
       e_at_1_mA_10mM: extractedData.e_at_1_mA_10mM,
       cathode_xrf_pt_loading: finalCathodeXrfPtLoading,
-        cathode_xrf_ru_loading: finalCathodeXrfRuLoading,
-        cathode_ru_pt_mass: finalCathodeRuPtMass,
-        anode_fe_ni: finalAnodeFeNi,
+      cathode_xrf_ru_loading: finalCathodeXrfRuLoading,
+      cathode_ru_pt_mass: finalCathodeRuPtMass,
+      anode_fe_ni: finalAnodeFeNi,
       X_over_02,
       X_over_1,
       X_over_2,
       X_over_1_back,
       X_over_02_back,
       ...extractedData,
-//      ...anodeData,
-//      ...anodeILLoadingData,
-//      ...cathodeData,
     };
 
     console.log("Data to be inserted into test_results:", data);
 
-    //logging frontend
+
+//    //logging frontend
     const sanitizeDate = (date) => {
       return date ? new Date(date).toISOString().split('T')[0] : null;
     };
+
 
     // In the backend, before inserting into the database
     const sanitizedStartDate = sanitizeDate(result.startDate);
     const sanitizedEndDate = sanitizeDate(result.endDate);
     //logging frontend
+
+    // Use the sanitized dates in your logic
+        console.log('Sanitized Start Date:', sanitizedStartDate);
+        console.log('Sanitized End Date:', sanitizedEndDate);
+
+    // Check if sanitization failed
+    if (!sanitizedStartDate || !sanitizedEndDate) {
+       return res.status(400).json({ message: 'Invalid or missing date values' });
+    }
+
 
 
     // Insert test results
@@ -1223,476 +787,6 @@ router.post('/log-results', auth, upload.single('excelFile'), async (req, res) =
     }
   }
 });
-
-
-//// Log test results and mark test as completed
-//router.post('/log-results', auth, upload.single('excelFile'), async (req, res) => {
-//  const { testResults, action } = req.body; //added action here
-//  const engineerEmail = req.user.email;
-//
-//  for (const result of testResults) {
-//  const {
-//    testRequestId, testCompleted, bolPh, comments,
-//        hardwareNumber, testStandChannel, startDate, endDate,
-//        daysUnderTest, notes, scratch, membraneThickness,
-//        bolConductivity, kohConductivity, kohPh, test_codes,
-//        cathode_xrf_pt_loading, cathode_xrf_ru_loading, cathode_ru_pt_mass, anode_fe_ni,
-//        updateAnodeFeNi, updateCathodeXrfPtLoading, updateCathodeXrfRuLoading, updateCathodeRuPtMass,
-//        slowPolCurveTestPerformed, recombinationLayerThickness, recombinationLayerPtLoading
-//  } = result; //= req.body
-//
-//  const engineerEmail = req.user.email;
-//
-//  console.log(req.body);
-//  console.log(cathode_xrf_pt_loading, cathode_xrf_ru_loading, cathode_ru_pt_mass, anode_fe_ni,
-//                  updateAnodeFeNi, updateCathodeXrfPtLoading, updateCathodeXrfRuLoading);
-//
-//  // Ensuring slowPolCurveTestPerformed is interpreted as a boolean
-//    const isSlowPolCurveTestPerformed = (slowPolCurveTestPerformed === 'true' || slowPolCurveTestPerformed === true);
-//    console.log('isSlowPolCurveTestPerformed:', isSlowPolCurveTestPerformed);
-//
-//  // Fetch anode and cathode numbers from test_requests table
-//  let anode, cathode;
-//  try {
-//    const result = await new Promise((resolve, reject) => {
-//      const sql = 'SELECT anode, cathode FROM test_requests WHERE id = ?';
-//      db.query(sql, [testRequestId], (err, result) => {
-//        if (err) return reject(err);
-//        resolve(result[0]);
-//      });
-//    });
-//    anode = result.anode;
-//    cathode = result.cathode;
-//  } catch (error) {
-//    console.error('Error fetching anode and cathode numbers:', error);
-//    return res.status(500).json({ message: 'Error fetching anode and cathode numbers', error });
-//  }
-//
-//  // Fetch anode data from Excel
-//  const anodeData = await fetchAnodeData(anode);
-//
-//  // Fetch anode IL loading data from Excel
-//  const anodeILLoadingData = await fetchAnodeILLoading(anode);
-//
-//  // Fetch cathode IL loading data from Excel
-//  const cathodeData = await fetchCathodeData(cathode);
-//
-//  // Initialize extracted data
-//  let extractedData = {};
-//
-//  // Initialize variables for X_over_*
-//  let X_over_02, X_over_1, X_over_2, X_over_1_back, X_over_02_back;
-//
-//  // Process the uploaded Excel file
-//  if (req.file) {
-//    console.log('Reading workbook');
-//    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-//    const ivSheet = workbook.Sheets['iV Summary'];
-//    const eisSheet = workbook.Sheets['EIS_HFR'];
-//    const h2CrossoverSheet = workbook.Sheets['H2 Crossover'];
-//    const eis1VSheet = workbook.Sheets['EIS_1 V'];
-//    const slowPolCurveSheet = workbook.Sheets['Slow pol curve'];
-//
-//    if (!ivSheet || !eisSheet || !h2CrossoverSheet || !eis1VSheet || !slowPolCurveSheet) {
-//      return res.status(400).send('Required sheets not found');
-//    }
-//
-//    const parseSharepointData = (ivSheet, eisSheet, h2CrossoverSheet, eis1VSheet, slowPolCurveSheet) => {
-//      const getCellValue = (sheet, cell) => {
-//        const cellValue = sheet[cell];
-//        return cellValue ? cellValue.v : null;
-//      };
-//
-//      const b8 = getCellValue(ivSheet, 'B8');
-//      const i8 = getCellValue(ivSheet, 'I8');
-//      const b7 = getCellValue(ivSheet, 'B7');
-//      const i7 = getCellValue(ivSheet, 'I7');
-//
-//      let closestToZeroValueDIW = Infinity;
-//      let closestToZeroValue10mM = Infinity;
-//      let hfrDiwValue = null;
-//      let hfr10mMValue = null;
-//
-//      const eisRange = xlsx.utils.decode_range(eisSheet['!ref']);
-//      for (let row = eisRange.s.r + 1; row <= eisRange.e.r; row++) {
-//        // For HFR_DIW
-//        const cellAddressE = xlsx.utils.encode_cell({ r: row, c: 4 });
-//        const cellAddressD = xlsx.utils.encode_cell({ r: row, c: 3 });
-//        const cellValueE = eisSheet[cellAddressE] ? eisSheet[cellAddressE].v : null;
-//
-//        if (cellValueE !== null && typeof cellValueE === 'number' && Math.abs(cellValueE) < Math.abs(closestToZeroValueDIW)) {
-//          closestToZeroValueDIW = cellValueE;
-//          hfrDiwValue = eisSheet[cellAddressD] ? eisSheet[cellAddressD].v * 1000 : null;
-//        }
-//
-//        // For HFR_10mM
-//        const cellAddressO = xlsx.utils.encode_cell({ r: row, c: 14 });
-//        const cellAddressN = xlsx.utils.encode_cell({ r: row, c: 13 });
-//        const cellValueO = eisSheet[cellAddressO] ? eisSheet[cellAddressO].v : null;
-//
-//        if (cellValueO !== null && typeof cellValueO === 'number' && Math.abs(cellValueO) < Math.abs(closestToZeroValue10mM)) {
-//          closestToZeroValue10mM = cellValueO;
-//          hfr10mMValue = eisSheet[cellAddressN] ? eisSheet[cellAddressN].v * 1000 : null;
-//        }
-//      }
-//
-//      // Define the function to get average values
-//      const calculateAverage = (values) => {
-//        const sum = values.reduce((acc, val) => acc + val, 0);
-//        return sum / values.length;
-//      };
-//
-//      // Define the function to find values in a column within a range
-//            const findNthValueInColumn = (sheet, column, targetValue, occurrence, range) => {
-//              const rangeDecoded = xlsx.utils.decode_range(sheet['!ref']);
-//              let count = 0;
-//              for (let row = rangeDecoded.s.r + 1; row <= rangeDecoded.e.r; row++) {
-//                const cellAddress = xlsx.utils.encode_cell({ r: row, c: column });
-//                const cellValue = sheet[cellAddress] ? parseFloat(sheet[cellAddress].v) : null;
-//
-//                if (cellValue !== null && isWithinRange(cellValue, targetValue, range)) {
-//                  count++;
-//                  if (count === occurrence) {
-//                    console.log(`Found target value ${targetValue} within range for the ${occurrence} time in row ${row + 1}`);
-//                    return row;
-//                  }
-//                }
-//              }
-//              console.log(`Target value ${targetValue} not found ${occurrence} times within range in column ${xlsx.utils.encode_col(column)}`);
-//              return null;
-//            };
-//
-//            if (isSlowPolCurveTestPerformed) {
-//              console.log('Executing Slow Pol Curve logic');
-//              // Logic for Slow pol curve sheet
-//              const rowFor0_2 = findNthValueInColumn(slowPolCurveSheet, 26, 0.2, 1, 0.01);
-//              const rowFor1 = findNthValueInColumn(slowPolCurveSheet, 26, 1, 1, 0.01);
-//              const rowFor2 = findNthValueInColumn(slowPolCurveSheet, 26, 2, 1, 0.01);
-//              const rowFor1_back = findNthValueInColumn(slowPolCurveSheet, 26, 1, 2, 0.01);
-//              const rowFor0_2_back = findNthValueInColumn(slowPolCurveSheet, 26, 0.2, 2, 0.01);
-//
-//              X_over_02 = rowFor0_2 !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor0_2 + 1}`) : null;
-//              X_over_1 = rowFor1 !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor1 + 1}`) : null;
-//              X_over_2 = rowFor2 !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor2 + 1}`) : null;
-//              X_over_1_back = rowFor1_back !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor1_back + 1}`) : null;
-//              X_over_02_back = rowFor0_2_back !== null ? getCellValue(slowPolCurveSheet, `AD${rowFor0_2_back + 1}`) : null;
-//            }else {
-//
-//            console.log('Executing H2 Crossover logic');
-//            // H2 Crossover Sheet Parsing Logic
-//            const columnEIdx = 4;  // 'Current Density(A/cm2)' corresponds to index 4
-//            const columnLIdx = 11;  // 'Crossover Current Density (mA/cm2)' corresponds to index 11
-//
-//            const findValuesInRange = (sheet, startIdx, lowerBound, upperBound, stopBelow, stopAbove) => {
-//              const valuesInRange = [];
-//              const range = xlsx.utils.decode_range(sheet['!ref']);
-//              for (let idx = startIdx; idx <= range.e.r; idx++) {
-//                const cellAddressE = xlsx.utils.encode_cell({ r: idx, c: columnEIdx });
-//                const cellAddressF = xlsx.utils.encode_cell({ r: idx, c: columnLIdx });
-//                const valueE = sheet[cellAddressE] ? parseFloat(sheet[cellAddressE].v) : null;
-//                if (isNaN(valueE)) continue;
-//                if (lowerBound <= valueE && valueE <= upperBound) {
-//                  valuesInRange.push([sheet[cellAddressF] ? parseFloat(sheet[cellAddressF].v) : null, idx]);
-//                }
-//                if (valuesInRange.length >= 3 && (valueE < stopBelow || valueE > stopAbove)) {
-//                  break;
-//                }
-//              }
-//              return valuesInRange.slice(-3);
-//            };
-//
-//            let rowNumbersFirst, rowNumbersSecond, rowNumbersThird, rowNumbersFourth, rowNumbersFinal;
-//
-//            const search0_2 = () => {
-//              rowNumbersFirst = findValuesInRange(h2CrossoverSheet, 0, 0.195, 0.205, 0.195, 0.205);
-//              if (rowNumbersFirst.length < 3) {
-//                console.log("Less than 3 values found in the first search within the specified range");
-//              } else {
-//                const correspondingValuesFirst = rowNumbersFirst.map(val => val[0]);
-//                X_over_02 = calculateAverage(correspondingValuesFirst);
-//                rowNumbersFirst = rowNumbersFirst.map(val => val[1]);
-//                console.log("First search results:");
-//                console.log("Corresponding values:", correspondingValuesFirst);
-//                console.log("Row numbers:", rowNumbersFirst);
-//              }
-//            };
-//
-//            const search1 = () => {
-//              if (rowNumbersFirst && rowNumbersFirst.length > 0) {
-//                const startIdx = rowNumbersFirst[rowNumbersFirst.length - 1] + 1;
-//                rowNumbersSecond = findValuesInRange(h2CrossoverSheet, startIdx, 0.975, 1.025, 0.975, 1.025);
-//                if (rowNumbersSecond.length < 3) {
-//                  console.log("Less than 3 values found for the second target value within the specified range");
-//                } else {
-//                  const correspondingValuesSecond = rowNumbersSecond.map(val => val[0]);
-//                  X_over_1 = calculateAverage(correspondingValuesSecond);
-//                  rowNumbersSecond = rowNumbersSecond.map(val => val[1]);
-//                  console.log("Second search results:");
-//                  console.log("Corresponding values:", correspondingValuesSecond);
-//                  console.log("Row numbers:", rowNumbersSecond);
-//                }
-//              }
-//            };
-//
-//            const search2 = () => {
-//              if (rowNumbersSecond && rowNumbersSecond.length > 0) {
-//                const startIdx = rowNumbersSecond[rowNumbersSecond.length - 1] + 1;
-//                rowNumbersThird = findValuesInRange(h2CrossoverSheet, startIdx, 1.975, 2.025, 1.975, 2.025);
-//                if (rowNumbersThird.length < 3) {
-//                  console.log("Less than 3 values found in the third search within the specified range");
-//                } else {
-//                  const correspondingValuesThird = rowNumbersThird.map(val => val[0]);
-//                  X_over_2 = calculateAverage(correspondingValuesThird);
-//                  rowNumbersThird = rowNumbersThird.map(val => val[1]);
-//                  console.log("Third search results:");
-//                  console.log("Corresponding values:", correspondingValuesThird);
-//                  console.log("Row numbers:", rowNumbersThird);
-//                }
-//              }
-//            };
-//
-//            const searchAgain = () => {
-//              if (rowNumbersThird && rowNumbersThird.length > 0) {
-//                const startIdx = rowNumbersThird[rowNumbersThird.length - 1] + 1;
-//                rowNumbersFourth = findValuesInRange(h2CrossoverSheet, startIdx, 0.975, 1.025, 0.975, 1.025);
-//                if (rowNumbersFourth.length < 3) {
-//                  console.log("Less than 3 values found in the fourth search within the specified range");
-//                } else {
-//                  const correspondingValuesFourth = rowNumbersFourth.map(val => val[0]);
-//                  X_over_1_back = calculateAverage(correspondingValuesFourth);
-//                  rowNumbersFourth = rowNumbersFourth.map(val => val[1]);
-//                  console.log("Fourth search results:");
-//                  console.log("Corresponding values:", correspondingValuesFourth);
-//                  console.log("Row numbers:", rowNumbersFourth);
-//                }
-//              }
-//            };
-//
-//            const finalSearch = () => {
-//              if (rowNumbersFourth && rowNumbersFourth.length > 0) {
-//                const startIdx = rowNumbersFourth[rowNumbersFourth.length - 1] + 1;
-//                rowNumbersFinal = findValuesInRange(h2CrossoverSheet, startIdx, 0.195, 0.205, 0.195, 0.205);
-//                if (rowNumbersFinal.length < 3) {
-//                  console.log("Less than 3 values found in the final search within the specified range");
-//                } else {
-//                  const correspondingValuesFinal = rowNumbersFinal.map(val => val[0]);
-//                  X_over_02_back = calculateAverage(correspondingValuesFinal);
-//                  rowNumbersFinal = rowNumbersFinal.map(val => val[1]);
-//                  console.log("Final search results:");
-//                  console.log("Corresponding values:", correspondingValuesFinal);
-//                  console.log("Row numbers:", rowNumbersFinal);
-//                }
-//              }
-//            };
-//
-//            // Execute the search functions
-//            search0_2();
-//            search1();
-//            search2();
-//            searchAgain();
-//            finalSearch();
-//
-//            console.log("X_over_02:", X_over_02);
-//            console.log("X_over_1:", X_over_1);
-//            console.log("X_over_2:", X_over_2);
-//            console.log("X_over_1_back:", X_over_1_back);
-//            console.log("X_over_02_back:", X_over_02_back);
-//      }
-//
-//      //Logic for E @ 1mA
-//      let closestToOneDIW = Infinity;
-//      let e_at_1_mA_DIW = null;
-//
-//      let closestToOne10mM = Infinity;
-//      let e_at_1_mA_10mM = null;
-//
-//      const ivRange = xlsx.utils.decode_range(ivSheet['!ref']);
-//      for (let row = ivRange.s.r + 1; row <= ivRange.e.r; row++) {
-//        const cellAddressC = xlsx.utils.encode_cell({ r: row, c: 2 });
-//        const cellAddressD = xlsx.utils.encode_cell({ r: row, c: 3 });
-//        const cellValueC = ivSheet[cellAddressC] ? ivSheet[cellAddressC].v * 1000 : null;
-//
-//        if (cellValueC !== null && typeof cellValueC === 'number' && Math.abs(cellValueC - 1) < Math.abs(closestToOneDIW - 1)) {
-//          closestToOneDIW = cellValueC;
-//          e_at_1_mA_DIW = ivSheet[cellAddressD] ? ivSheet[cellAddressD].v : null;
-//        }
-//
-//        const cellAddressJ = xlsx.utils.encode_cell({ r: row, c: 9 });
-//        const cellAddressK = xlsx.utils.encode_cell({ r: row, c: 10 });
-//        const cellValueJ = ivSheet[cellAddressJ] ? ivSheet[cellAddressJ].v * 1000 : null;
-//
-//        if (cellValueJ !== null && typeof cellValueJ === 'number' && Math.abs(cellValueJ - 1) < Math.abs(closestToOne10mM - 1)) {
-//          closestToOne10mM = cellValueJ;
-//          e_at_1_mA_10mM = ivSheet[cellAddressK] ? ivSheet[cellAddressK].v : null;
-//        }
-//      }
-//
-//      return {
-//        i_at_1_8_10mM: i8,
-//        i_at_1_8_DIW: b8,
-//        E100_DIW: b7,
-//        E100_10mM: i7,
-//        HFR_DIW: hfrDiwValue,
-//        HFR_10mM: hfr10mMValue,
-//        fraction_q_touching_membrane: getCellValue(eis1VSheet, 'H6'),
-//        q_int_frac_diw_10mM_koh: getCellValue(eis1VSheet, 'R6'),
-//        q: getCellValue(eis1VSheet, 'H4'),
-//        phi: getCellValue(eis1VSheet, 'H5'),
-//        eir: getCellValue(eis1VSheet, 'H3'),
-//        effective_ionic_conductivity: getCellValue(eis1VSheet, 'H9'),
-//        e_at_1_mA_DIW: e_at_1_mA_DIW,
-//        e_at_1_mA_10mM: e_at_1_mA_10mM,
-//        X_over_02: X_over_02,
-//        X_over_1: X_over_1,
-//        X_over_2: X_over_2,
-//        X_over_1_back: X_over_1_back,
-//        X_over_02_back: X_over_02_back
-//      };
-//    };
-//
-//    extractedData = parseSharepointData(ivSheet, eisSheet, h2CrossoverSheet, eis1VSheet, slowPolCurveSheet);
-//  }
-//
-//  // Calculate cathode_ru_pt_mass based on updated values
-//      const cathodePtLoading = updateCathodeXrfPtLoading === 'yes' ? parseFloat(cathode_xrf_pt_loading) : parseFloat(cathodeData.cathode_xrf_pt_loading);
-//      const cathodeRuLoading = updateCathodeXrfRuLoading === 'yes' ? parseFloat(cathode_xrf_ru_loading) : parseFloat(cathodeData.cathode_xrf_ru_loading);
-//      const calculatedCathodeRuPtMass = cathodeRuLoading / (cathodePtLoading || 1);
-//
-//  // Combine form data, guide data and extracted data
-//  const data = {
-//    testRequestId,
-//    engineerEmail,
-//    testCompleted: testCompleted ? 1 : 0,
-//    bolPh,
-//    comments,
-//    hardwareNumber,
-//    testStandChannel,
-//    startDate,
-//    endDate,
-//    daysUnderTest,
-//    notes,
-//    scratch,
-//    membraneThickness,
-//    bolConductivity,
-//    kohConductivity,
-//    kohPh,
-//    test_codes,
-//    recombinationLayerThickness: recombinationLayerThickness || 'N/A',
-//    recombinationLayerPtLoading: recombinationLayerPtLoading || 'N/A',
-//    e_at_1_mA_DIW: extractedData.e_at_1_mA_DIW,
-//    e_at_1_mA_10mM: extractedData.e_at_1_mA_10mM,
-////    cathode_xrf_pt_loading: updateCathodeXrfPtLoading === 'no' ? cathodeData.cathode_xrf_pt_loading : cathode_xrf_pt_loading || cathodeData.cathode_xrf_pt_loading,
-////    cathode_xrf_ru_loading: updateCathodeXrfRuLoading === 'no' ? cathodeData.cathode_xrf_ru_loading : cathode_xrf_ru_loading || cathodeData.cathode_xrf_ru_loading,
-////    cathode_ru_pt_mass: updateCathodeXrfPtLoading === 'no' && updateCathodeXrfRuLoading === 'no' ? cathodeData.cathode_ru_pt_mass : cathode_ru_pt_mass || cathodeData.cathode_ru_pt_mass,
-////    anode_fe_ni: updateAnodeFeNi === 'no' ? anodeILLoadingData.anode_fe_ni : anode_fe_ni || anodeILLoadingData.anode_fe_ni,
-//    cathode_xrf_pt_loading: updateCathodeXrfPtLoading === 'yes' ? parseFloat(cathode_xrf_pt_loading) : cathodeData.cathode_xrf_pt_loading,
-//    cathode_xrf_ru_loading: updateCathodeXrfRuLoading === 'yes' ? parseFloat(cathode_xrf_ru_loading) : cathodeData.cathode_xrf_ru_loading,
-//    cathode_ru_pt_mass: updateCathodeRuPtMass === 'yes' ? parseFloat(cathode_ru_pt_mass) : cathodeData.cathode_ru_pt_mass,
-//    anode_fe_ni: updateAnodeFeNi === 'yes' ? parseFloat(anode_fe_ni) : anodeILLoadingData.anode_fe_ni,
-//    X_over_02,
-//    X_over_1,
-//    X_over_2,
-//    X_over_1_back,
-//    X_over_02_back,
-//    ...extractedData,
-//    ...anodeData,
-//    ...anodeILLoadingData,
-//    ...cathodeData,
-//  };
-//
-//
-//  console.log("Data to be inserted into test_results:", data);
-//
-//  // Insert test results
-//  const insertSql = `INSERT INTO test_results
-//  (testRequestId, engineerEmail, testCompleted, bolPh, comments, hardwareNumber,
-//  testStandChannel, startDate, endDate, daysUnderTest, notes, scratch, membraneThickness,
-//  bolConductivity, kohConductivity, kohPh, test_codes, cathode_xrf_pt_loading, cathode_xrf_ru_loading,
-//  cathode_ru_pt_mass, anode_fe_ni,
-//  i_at_1_8_v_diw, i_at_1_8_v_10mM_koh, e_at_100mAcm2_diw,
-//  e_at_100mAcm2_10mM_koh, hfr_diw, hfr_10mM_koh, eir, q, phi, fraction_q_touching_membrane,
-//  effective_ionic_conductivity, q_int_frac_diw_10mM_koh, anode_il_loading, cathode_il_loading,
-//  e_at_100mAcm2, e_at_1Acm2, e3_n_at_20mAcm2, e3_tafel_slope, X_over_02,
-//  X_over_1, X_over_2, X_over_1_back, X_over_02_back, recombinationLayerThickness, recombinationLayerPtLoading,
-//  e_at_1_mA_DIW, e_at_1_mA_10mM, loggedAt)
-//  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
-//
-//  const values = [
-//    data.testRequestId, data.engineerEmail, data.testCompleted, data.bolPh, data.comments, data.hardwareNumber,
-//    data.testStandChannel, data.startDate, data.endDate, data.daysUnderTest, data.notes, data.scratch, data.membraneThickness,
-//    data.bolConductivity, data.kohConductivity, data.kohPh, data.test_codes, data.cathode_xrf_pt_loading, data.cathode_xrf_ru_loading,
-//    data.cathode_ru_pt_mass, data.anode_fe_ni,
-//    data.i_at_1_8_DIW, data.i_at_1_8_10mM, data.E100_DIW,
-//    data.E100_10mM, data.HFR_DIW, data.HFR_10mM, data.eir, data.q, data.phi, data.fraction_q_touching_membrane,
-//    data.effective_ionic_conductivity, data.q_int_frac_diw_10mM_koh, data.anode_il_loading, data.cathode_il_loading,
-//    data.e_at_100mAcm2, data.e_at_1Acm2, data.e3_n_at_20mAcm2, data.e3_tafel_slope,
-//    data.X_over_02, data.X_over_1, data.X_over_2, data.X_over_1_back, data.X_over_02_back, data.recombinationLayerThickness, data.recombinationLayerPtLoading,
-//    data.e_at_1_mA_DIW, data.e_at_1_mA_10mM
-//  ];
-//
-//  await db.query(insertSql, values);
-//  }
-//
-//  db.query(insertSql, values, (err, result) => {
-//    if (err) {
-//      console.error('Database error:', err);
-//      return res.status(500).json({ message: 'Database error', err });
-//    }
-//
-//if (action === 'complete') {
-//    // After inserting into test_results, insert into display_data
-//    const displayDataSql = `
-//      INSERT INTO display_data (
-//        test_codes, anode, cathode, membrane, owner, hardwareNumber, testStandChannel, startDate, endDate,
-//        daysUnderTest, notes, baseline, scratch, membraneThickness, recombination_layer_thickness,
-//        recombination_layer_pt_loading, cathode_xrf_pt_loading, cathode_xrf_ru_loading, cathode_ru_pt_mass,
-//        anode_fe_ni, bolConductivity, bolPh, kohConductivity, kohPh, i_at_1_8_v_diw, i_at_1_8_v_10mM_koh,
-//        e3_n_at_20mAcm2, e3_tafel_slope, e_at_100mAcm2_diw, e_at_100mAcm2_10mM_koh,
-//        hfr_diw, hfr_10mM_koh, eir, q, phi, fraction_q_touching_membrane, effective_ionic_conductivity,
-//        q_int_frac_diw_10mM_koh, anode_il_loading, cathode_il_loading,
-//        e_at_100mAcm2, e_at_1Acm2, xover_cd_at_0A_0barg, xover_cd_at_1Acm2_0barg, xover_cd_at_0A_1_5barg, xover_cd_at_1Acm2_1_5barg
-//      )
-//      SELECT
-//        trr.test_codes, tr.anode, tr.cathode, tr.membrane, tr.owner, trr.hardwareNumber, trr.testStandChannel, trr.startDate, trr.endDate,
-//        trr.daysUnderTest, trr.notes, tr.baseline, trr.scratch, trr.membraneThickness, trr.recombination_layer_thickness,
-//        trr.recombination_layer_pt_loading, trr.cathode_xrf_pt_loading, trr.cathode_xrf_ru_loading, trr.cathode_ru_pt_mass,
-//        trr.anode_fe_ni, trr.bolConductivity, trr.bolPh, trr.kohConductivity, trr.kohPh, trr.i_at_1_8_v_diw, trr.i_at_1_8_v_10mM_koh,
-//        trr.e3_n_at_20mAcm2, trr.e3_tafel_slope, trr.e_at_100mAcm2_diw, trr.e_at_100mAcm2_10mM_koh,
-//        trr.hfr_diw, trr.hfr_10mM_koh, trr.eir, trr.q, trr.phi, trr.fraction_q_touching_membrane, trr.effective_ionic_conductivity,
-//        trr.q_int_frac_diw_10mM_koh, trr.anode_il_loading, trr.cathode_il_loading,
-//        trr.e_at_100mAcm2, trr.e_at_1Acm2, trr.xover_cd_at_0A_0barg, trr.xover_cd_at_1Acm2_0barg, trr.xover_cd_at_0A_1_5barg, trr.xover_cd_at_1Acm2_1_5barg
-//      FROM
-//        test_requests tr
-//      JOIN test_results trr ON tr.id = trr.testRequestId
-//      WHERE
-//        trr.testRequestId = ?;
-//      `;
-//
-//    const displayDataValues = [data.testRequestId];
-//
-//    db.query(displayDataSql, displayDataValues, (displayErr) => {
-//      if (displayErr) {
-//        console.error('Database error inserting into display_data:', displayErr);
-//        return res.status(500).json({ message: 'Database error inserting into display_data', displayErr });
-//      }
-//
-//      // Update test_requests to mark as completed
-//      const updateSql = 'UPDATE test_requests SET status = "completed" WHERE id = ?';
-//      db.query(updateSql, [testRequestId], (updateErr) => {
-//        if (updateErr) {
-//          console.error('Database error updating test_requests:', updateErr);
-//          return res.status(500).json({ message: 'Database error updating test_requests', updateErr });
-//        }
-//
-//        res.json({ message: 'Test results logged, test marked as completed, and data populated in display_data', id: result.insertId });
-//        });
-//      });
-//    } else {
-//      res.json({ message: 'Test results saved successfully' });
-//      }
-//    });
-//  }
-//});
 
 router.get('/completed-tests', auth, (req, res) => {
   const sql = `
@@ -1821,165 +915,6 @@ router.get('/test-details/:testCode', async (req, res) => {
   }
 });
 
-// Temporary in-memory storage for data
-let steadyStateDataDIW = [];
-let steadyStateData10mM = [];
-let polCurveDataDIW = [];
-let polCurveData10mM = [];
-let test4Data = [];
-let additionalPolCurves = [];
-
-router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).send('No file uploaded');
-    }
-
-    // Read the Excel file
-    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-
-    // Process iV Summary sheet for pol curves
-    const ivSummarySheet = workbook.Sheets['iV Summary'];
-    const ivData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 });
-
-    // Extract relevant data for pol curves
-    const polCurveDataDIW = ivData.slice(1).map(row => ({
-      currentDensity: parseFloat(row[2]),
-      voltage: parseFloat(row[3])
-    })).filter(data => !isNaN(data.currentDensity) && !isNaN(data.voltage)); // Filter out non-numeric values
-
-    const polCurveData10mM = ivData.slice(1).map(row => ({
-      currentDensity: parseFloat(row[7]),
-      voltage: parseFloat(row[8])
-    })).filter(data => !isNaN(data.currentDensity) && !isNaN(data.voltage)); // Filter out non-numeric values
-
-    console.log('polCurveDataDIW:', polCurveDataDIW);
-
-    // Process Durability sheet for steady states
-    const durabilitySheet = workbook.Sheets['Durability'];
-    const durabilityData = xlsx.utils.sheet_to_json(durabilitySheet, { header: 1 }).slice(1);
-
-    const steadyStateDataDIW = durabilityData.map(row => ({
-      time: parseFloat(row[6]),
-      cellPotential: parseFloat(row[4])
-    })).filter(data => !isNaN(data.time) && !isNaN(data.cellPotential)); // Filter out non-numeric values
-
-    const steadyStateData10mM = durabilityData.map(row => ({
-      time: parseFloat(row[6]),
-      cellPotential: parseFloat(row[4])
-    })).filter(data => !isNaN(data.time) && !isNaN(data.cellPotential)); // Filter out non-numeric values
-
-    // Process EIS_HFR sheet for Test 4
-    const eisHfrSheet = workbook.Sheets['EIS_HFR'];
-    const eisHfrData = xlsx.utils.sheet_to_json(eisHfrSheet, { header: 1 });
-
-    // Test 4: Filter and map valid data
-    const test4Data = eisHfrData
-      .slice(1)  // Skip the header row
-      .map(row => ({
-        reZ: parseFloat(row[3]),  // Column D
-        imZ: parseFloat(row[4])   // Column E
-      }))
-      .filter(row => !isNaN(row.reZ) && !isNaN(row.imZ));  // Filter out invalid rows
-
-    // Helper function to extract and validate numerical data from a specific cell
-    const getValidatedCellValue = (sheet, cell) => {
-      const cellObj = sheet[cell];
-      const value = cellObj ? parseFloat(cellObj.v) : null;
-      return !isNaN(value) ? value : null;
-    };
-
-    // Helper function to convert column index to Excel column letters
-    const getColumnLetter = (colIndex) => {
-      let letter = '';
-      while (colIndex >= 0) {
-        letter = String.fromCharCode((colIndex % 26) + 65) + letter;
-        colIndex = Math.floor(colIndex / 26) - 1;
-      }
-      return letter;
-    };
-
-    // Loop through the columns P, W, AD, etc., checking for increments of 7
-    let baseColumnIndex = 'P'.charCodeAt(0) - 'A'.charCodeAt(0); // Start at column 'P'
-    let polCurveExists = true;
-    let step = 0;
-    const additionalPolCurves = [];
-
-    while (polCurveExists) {
-      // Calculate the column and cell in the current iteration
-      const currentColumnIndex = baseColumnIndex + step * 7;
-      const currentColumn = getColumnLetter(currentColumnIndex);
-      const pColumn = currentColumn + '2';
-      const pValue = getValidatedCellValue(ivSummarySheet, pColumn);
-
-      // Log the value of the current cell being checked
-      console.log(`Checking time column ${pColumn}: ${pValue}`);
-
-      if (pValue !== null) {
-        const hours = `${pValue} hrs`;
-
-        // Determine the current density and voltage columns
-        const currentDensityCol = getColumnLetter(currentColumnIndex + 1); // Q, X, AE, ...
-        const voltageCol = getColumnLetter(currentColumnIndex + 2); // R, Y, AF, ...
-
-        // Extract and validate current density and voltage data
-        const currentDensityData = ivData.slice(1)
-          .map(row => parseFloat(row[currentDensityCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
-          .filter(value => !isNaN(value)); // Filter out non-numeric values
-
-        const voltageData = ivData.slice(1)
-          .map(row => parseFloat(row[voltageCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
-          .filter(value => !isNaN(value)); // Filter out non-numeric values
-
-        // Store pol curve data
-        additionalPolCurves.push({
-          hours,
-          currentDensity: currentDensityData,
-          voltage: voltageData,
-        });
-
-        // Move to the next set of columns (increment step by 7)
-        step += 1;
-      } else {
-        polCurveExists = false;
-      }
-    }
-
-    // Calculate test counts
-    const test1Count = 1; // Test 1: Break-in
-    const ivSheets = workbook.SheetNames.filter(name => /^iV\d+$/.test(name));
-    const test2Count = ivSheets.length ? Math.max(...ivSheets.map(name => parseInt(name.replace('iV', ''), 10))) - 1 : 1;
-    const cellH11 = ivSummarySheet ? xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })[10][7] : '';
-    const test3Count = cellH11 === 'BoL 10 mM KOH F&R' ? 1 : 0;
-    const test4Count = test2Count + 1;
-
-    const counts = {
-      test1Count,
-      test2Count,
-      test3Count,
-      test4Count
-    };
-
-    // Return the processed data
-    res.json({
-      message: 'Excel file processed successfully',
-      dataAvailable: true,
-      counts,
-      data: {
-        steadyStateDataDIW,
-        steadyStateData10mM,
-        polCurveDataDIW,
-        polCurveData10mM,
-        test4Data,
-        additionalPolCurves // Include additional pol curves in the response
-      }
-    });
-  } catch (error) {
-    console.error('Error processing Excel file:', error);
-    res.status(500).json({ message: 'Error processing Excel file', error });
-  }
-});
-
 // Function to filter out undefined values
 function filterValidData(data) {
   return data.filter(d => d.currentDensity !== undefined && d.voltage !== undefined);
@@ -2043,59 +978,335 @@ function linearRegression(x, y) {
     lineData: x.map((xi) => ({ x: xi, y: slope * xi + intercept })),
   };
 }
-//
-//router.get('/polcurve-diw', async (req, res) => {
-//  try {
-//    const validData = polCurveDataDIW
-//      .filter(d => typeof d.currentDensity === 'number' && !isNaN(d.currentDensity) &&
-//                   typeof d.voltage === 'number' && !isNaN(d.voltage))
-//      .sort((a, b) => a.currentDensity - b.currentDensity);
-//
-//    console.log(`PolCurve with DIW: ${validData.length} valid data points`);
-//
-//    const xValues = validData.map(d => d.currentDensity);
-//    const yValues = validData.map(d => d.voltage);
-//
-//    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
-//
-//    const responseData = {
-//      scatterData: validData.map(d => ({ x: d.currentDensity, y: d.voltage })),
-//      lineData,
-//      xAxisLabel: 'Current Density (A/cm²)',
-//      yAxisLabel: 'Voltage (V)',
-//      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
-//    };
-//
-//    res.json(responseData);
-//  } catch (error) {
-//    console.error('Error generating PolCurve with DIW chart:', error);
-//    res.status(500).json({ message: 'Error generating chart', error });
-//  }
-//});
+
+// Temporary in-memory storage for data
+let steadyStateDataDIW = [];
+let steadyStateData10mM = [];
+let polCurveDataDIW = [];
+let polCurveData10mM = [];
+let test4Data = [];
+let additionalPolCurves = [];
+let additionalEISData = [];
+
+router.post('/excel-analyzer', upload.single('excelFile'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).send('No file uploaded');
+    }
+
+    // Read the Excel file
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+
+    // Process iV Summary sheet for pol curves
+    const ivSummarySheet = workbook.Sheets['iV Summary'];
+    const ivData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 });
+
+    // Extract relevant data for pol curves
+    polCurveDataDIW = ivData.slice(1).map(row => ({
+      currentDensity: parseFloat(row[2]),
+      voltage: parseFloat(row[3])
+    })).filter(d => !isNaN(d.currentDensity) && !isNaN(d.voltage));
+
+    polCurveData10mM = ivData.slice(1).map(row => ({
+      currentDensity: parseFloat(row[7]),
+      voltage: parseFloat(row[8])
+    })).filter(d => !isNaN(d.currentDensity) && !isNaN(d.voltage));
+
+    // Process Durability sheet for steady states
+    const durabilitySheet = workbook.Sheets['Durability'];
+    const durabilityData = xlsx.utils.sheet_to_json(durabilitySheet, { header: 1 }).slice(1);
+
+    steadyStateDataDIW = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
+    steadyStateData10mM = durabilityData.map(row => ({ time: row[6], cellPotential: row[4] }));
+
+    // Process EIS_HFR sheet for Test 4
+    const eisHfrSheet = workbook.Sheets['EIS_HFR'];
+    const eisHfrData = xlsx.utils.sheet_to_json(eisHfrSheet, { header: 1 });
+
+    // Test 4: Filter and map valid data
+    test4Data = eisHfrData
+      .slice(1)  // Skip the header row
+      .map(row => ({
+        reZ: parseFloat(row[3]),  // Column D
+        imZ: parseFloat(row[4])   // Column E
+      }))
+      .filter(row => !isNaN(row.reZ) && !isNaN(row.imZ));  // Filter out invalid rows
+
+    // Helper function to extract and validate numerical data from a specific cell
+    const getValidatedCellValue = (sheet, cell) => {
+      const cellObj = sheet[cell];
+      const value = cellObj ? parseFloat(cellObj.v) : null;
+      return !isNaN(value) ? value : null;
+    };
+
+    // Helper function to convert column index to Excel column letters
+    const getColumnLetter = (colIndex) => {
+      let letter = '';
+      while (colIndex >= 0) {
+        letter = String.fromCharCode((colIndex % 26) + 65) + letter;
+        colIndex = Math.floor(colIndex / 26) - 1;
+      }
+      return letter;
+    };
+
+    function getColumnIndex(column) {
+          let index = 0;
+          for (let i = 0; i < column.length; i++) {
+            index = index * 26 + (column.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+          }
+          return index - 1; // Convert to zero-based index
+        }
+
+        let baseColumnIndex = getColumnIndex('P'); // Start at column 'P'
+        let polCurveExists = true;
+        let step = 0;
+
+        while (polCurveExists) {
+          const currentColumnIndex = baseColumnIndex + step * 7;
+          const currentColumn = getColumnLetter(currentColumnIndex);
+          const pColumn = currentColumn + '2';
+          const pValue = getValidatedCellValue(ivSummarySheet, pColumn);
+
+          console.log(`Checking time column ${pColumn}: ${pValue}`);
+
+          if (pValue !== null) {
+            const hours = `${pValue} hrs`;
+            const currentDensityCol = getColumnLetter(currentColumnIndex + 1); // e.g., 'Q', 'X', 'AE', ...
+            const voltageCol = getColumnLetter(currentColumnIndex + 2); // e.g., 'R', 'Y', 'AF', ...
+
+            const pairedData = ivData.slice(1)
+              .map(row => ({
+                currentDensity: parseFloat(row[getColumnIndex(currentDensityCol)]),
+                voltage: parseFloat(row[getColumnIndex(voltageCol)])
+              }))
+              .filter(d => !isNaN(d.currentDensity) && !isNaN(d.voltage));
+
+            additionalPolCurves.push({
+              hours,
+              data: pairedData
+            });
+
+            step += 1;
+          } else {
+            polCurveExists = false;
+          }
+        }
+
+        // Add the extra time column (B2), current density (C), and voltage (D)
+        const extraTimeValue = getValidatedCellValue(ivSummarySheet, 'B2');
+        console.log(`Checking time column: ${extraTimeValue} hrs (from B2)`);
+        if (extraTimeValue !== null) {
+          const pairedData = ivData.slice(1)
+            .map(row => ({
+              currentDensity: parseFloat(row[2]), // Column C
+              voltage: parseFloat(row[3]) // Column D
+            }))
+            .filter(d => !isNaN(d.currentDensity) && !isNaN(d.voltage));
+
+          additionalPolCurves.push({
+            hours: `${extraTimeValue} hrs`,
+            data: pairedData
+          });
+        }
+
+        let baseEISColumnIndex = getColumnIndex('V'); // Start at column 'V'
+        let eisDataExists = true;
+        step = 0;
+        let test4Count = 0;
+
+        while (eisDataExists) {
+          const currentColumnIndex = baseEISColumnIndex + step * 10;
+          const currentColumn = getColumnLetter(currentColumnIndex);
+          const timeColumn = currentColumn + '2';
+          const timeValue = getValidatedCellValue(eisHfrSheet, timeColumn);
+
+          console.log(`Checking EIS time column ${timeColumn}: ${timeValue}`);
+
+          if (timeValue !== null) {
+            const hours = `${timeValue} hrs`;
+            const reZCol = getColumnLetter(currentColumnIndex + 2); // e.g., 'X' or 'AH', etc.
+            const imZCol = getColumnLetter(currentColumnIndex + 3); // e.g., 'Y' or 'AI', etc.
+
+            const pairedData = eisHfrData.slice(1)
+              .map(row => ({
+                reZ: parseFloat(row[getColumnIndex(reZCol)]),
+                imZ: parseFloat(row[getColumnIndex(imZCol)])
+              }))
+              .filter(d => !isNaN(d.reZ) && !isNaN(d.imZ));
+
+            additionalEISData.push({
+              hours,
+              data: pairedData
+            });
+
+            step += 1;
+            test4Count += 1;
+          } else {
+            eisDataExists = false;
+          }
+        }
+
+        // Add the extra time column (B2), reZ (D), and imZ (E)
+        const extraEISTimeValue = getValidatedCellValue(eisHfrSheet, 'B2');
+        console.log(`Checking EIS extra time column: ${extraEISTimeValue} hrs (from B2)`);
+        if (extraEISTimeValue !== null) {
+          const pairedEISData = eisHfrData.slice(1)
+            .map(row => ({
+              reZ: parseFloat(row[3]), // Column D
+              imZ: parseFloat(row[4])  // Column E
+            }))
+            .filter(d => !isNaN(d.reZ) && !isNaN(d.imZ));
+
+          additionalEISData.push({
+            hours: `${extraEISTimeValue} hrs`,
+            data: pairedEISData
+          });
+        }
+
+    // Increment the test4Count by 1 as per your requirement
+    test4Count += 1;
+
+    // Calculate test counts
+    const test1Count = 1; // Test 1: Break-in
+    const ivSheets = workbook.SheetNames.filter(name => /^iV\d+$/.test(name));
+    const test2Count = ivSheets.length ? Math.max(...ivSheets.map(name => parseInt(name.replace('iV', ''), 10))) - 1 : 1;
+    const cellH11 = ivSummarySheet ? xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })[10][7] : '';
+    const test3Count = cellH11 === 'BoL 10 mM KOH F&R' ? 1 : 0;
+
+    const counts = {
+      test1Count,
+      test2Count,
+      test3Count,
+      test4Count
+    };
+
+    // Return the processed data including unique current densities and additional curves
+    res.json({
+      message: 'Excel file processed successfully',
+      dataAvailable: true,
+      counts,
+      data: {
+        steadyStateDataDIW,
+        steadyStateData10mM,
+        polCurveDataDIW,
+        polCurveData10mM,
+        test4Data,
+        additionalPolCurves,
+        additionalEISData
+      }
+    });
+  } catch (error) {
+    console.error('Error processing Excel file:', error);
+    res.status(500).json({ message: 'Error processing Excel file', error });
+  }
+});
+
+router.get('/durability-polcurve-diw', async (req, res) => {
+  console.log('Durability PolCurveDIW endpoint hit');
+
+  try {
+    const selectedCurrentDensity = parseFloat(req.query.currentDensity);
+    console.log('Selected Current Density:', selectedCurrentDensity);
+
+    if (isNaN(selectedCurrentDensity)) {
+      console.log('Invalid or missing currentDensity parameter');
+      return res.status(400).json({ message: 'Invalid or missing currentDensity parameter' });
+    }
+
+    const voltageVsTimeData = additionalPolCurves.map(curve => {
+      console.log(`Processing curve at time ${curve.hours}`);
+
+      if (!curve.data || !Array.isArray(curve.data)) {
+        console.error('curve.data is missing or not an array:', curve);
+        return null;
+      }
+
+      const index = curve.data.findIndex(d => {
+        return Math.abs(d.currentDensity - selectedCurrentDensity) < 0.0001;
+      });
+
+      if (index !== -1) {
+        console.log(`Match found for Current Density: ${selectedCurrentDensity} at index ${index}`);
+        return {
+          time: parseFloat(curve.hours),
+          voltage: curve.data[index].voltage,
+        };
+      } else {
+        console.log(`No match for Current Density ${selectedCurrentDensity}`);
+        return null;
+      }
+    }).filter(d => d !== null);
+
+    console.log('Processed Voltage vs. Time Data:', voltageVsTimeData);
+
+    const xValues = voltageVsTimeData.map(d => d.time);
+    const yValues = voltageVsTimeData.map(d => d.voltage);
+
+    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
+
+    const responseData = {
+      scatterData: voltageVsTimeData.map(d => ({ x: d.time, y: d.voltage })),
+      lineData, // Adding the line of best fit data to the response
+      uniqueCurrentDensities: [...new Set(voltageVsTimeData.map(d => d.time))],
+      xAxisLabel: 'Time (hrs)',
+      yAxisLabel: 'Voltage (V)',
+      currentDensity: selectedCurrentDensity,
+      chartType: 'PolCurveDIW',
+      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
+    };
+
+    res.json(responseData);
+  } catch (error) {
+    console.error('Error generating Voltage vs. Time chart:', error);
+    res.status(500).json({ message: 'Error generating chart', error });
+  }
+});
+
+router.get('/polcurve-diw-currentdensities', async (req, res) => {
+  try {
+    const validData = polCurveDataDIW
+      .filter(d => typeof d.currentDensity === 'number' && !isNaN(d.currentDensity))
+      .sort((a, b) => a.currentDensity - b.currentDensity);
+
+    const uniqueCurrentDensities = [...new Set(validData.map(d => d.currentDensity))];
+
+    const responseData = {
+      uniqueCurrentDensities,
+    };
+
+    res.json(responseData);
+  } catch (error) {
+    console.error('Error fetching unique current densities:', error);
+    res.status(500).json({ message: 'Error fetching current densities', error });
+  }
+});
 
 router.get('/polcurve-diw', async (req, res) => {
   try {
-    // Filter and sort the data to ensure valid numerical entries
-    const validData = polCurveDataDIW
+    const { time } = req.query;
+
+    if (!time) {
+      return res.status(400).json({ message: 'Time parameter is required' });
+    }
+
+    // Find the data corresponding to the selected time
+    const timeData = additionalPolCurves.find(curve => curve.hours === time);
+
+    if (!timeData) {
+      return res.status(404).json({ message: 'Data not found for the selected time' });
+    }
+
+    const validData = timeData.data
       .filter(d => typeof d.currentDensity === 'number' && !isNaN(d.currentDensity) &&
                    typeof d.voltage === 'number' && !isNaN(d.voltage))
       .sort((a, b) => a.currentDensity - b.currentDensity);
 
-    console.log('Valid Data for polCurveDataDIW:', validData); // Log this to see the filtered valid data
+    console.log(`PolCurve with DIW at time ${time}: ${validData.length} valid data points`);
 
-    // Extract unique current densities for dropdown options
-    const uniqueCurrentDensities = [...new Set(validData.map(d => d.currentDensity))];
-
-    // Extract all current densities
-    const allCurrentDensities = validData.map(d => d.currentDensity);
-
-    // Prepare response data
     const responseData = {
       scatterData: validData.map(d => ({ x: d.currentDensity, y: d.voltage })),
-      uniqueCurrentDensities,  // Send unique current densities separately
-      allCurrentDensities,     // Send all current densities separately
       xAxisLabel: 'Current Density (A/cm²)',
-      yAxisLabel: 'Voltage (V)'
+      yAxisLabel: 'Voltage (V)',
     };
 
     res.json(responseData);
@@ -2104,7 +1315,6 @@ router.get('/polcurve-diw', async (req, res) => {
     res.status(500).json({ message: 'Error generating chart', error });
   }
 });
-
 
 router.get('/polcurve-10mm', async (req, res) => {
   try {
@@ -2115,17 +1325,10 @@ router.get('/polcurve-10mm', async (req, res) => {
 
     console.log(`PolCurve with 10mM: ${validData.length} valid data points`);
 
-    const xValues = validData.map(d => d.currentDensity);
-    const yValues = validData.map(d => d.voltage);
-
-    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
-
     const responseData = {
       scatterData: validData.map(d => ({ x: d.currentDensity, y: d.voltage })),
-      lineData,
       xAxisLabel: 'Current Density (A/cm²)',
       yAxisLabel: 'Voltage (V)',
-      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
     };
 
     res.json(responseData);
@@ -2166,6 +1369,7 @@ router.get('/steadystate-diw', async (req, res) => {
 
 router.get('/steadystate-10mm', async (req, res) => {
   try {
+
     const validData = steadyStateData10mM
       .filter(d => typeof d.time === 'number' && !isNaN(d.time) &&
                    typeof d.cellPotential === 'number' && !isNaN(d.cellPotential))
@@ -2195,15 +1399,27 @@ router.get('/steadystate-10mm', async (req, res) => {
 
 router.get('/test4', async (req, res) => {
   try {
+    const { time } = req.query; // Get the selected time from the query parameters
+
+    if (!time) {
+      return res.status(400).json({ message: 'Time parameter is required' });
+    }
+
+    // Find the data corresponding to the selected time
+    const selectedEISData = additionalEISData.find(eis => eis.hours === time);
+
+    if (!selectedEISData) {
+      return res.status(404).json({ message: `No data found for time ${time}` });
+    }
+
     // Filter and validate the data
-    const validData = test4Data
+    const validData = selectedEISData.data
       .filter(d => typeof d.reZ === 'number' && !isNaN(d.reZ) &&
                    typeof d.imZ === 'number' && !isNaN(d.imZ))
       .sort((a, b) => a.reZ - b.reZ);
 
-    console.log(`Test 4: ${validData.length} valid data points`);
+    console.log(`Test 4: ${validData.length} valid data points for time ${time}`);
 
-    // Return an error if no valid data points are found
     if (validData.length === 0) {
       return res.status(400).json({ message: 'No valid data points found for Test 4' });
     }
@@ -2214,23 +1430,12 @@ router.get('/test4', async (req, res) => {
       imZ: d.imZ * 1000
     }));
 
-    // Extract x and y values from the scaled data
-    const xValues = scaledData.map(d => d.reZ);
-    const yValues = scaledData.map(d => d.imZ);
-
-    // Perform linear regression
-    const { slope, intercept, lineData, r2 } = linearRegression(xValues, yValues);
-
-    // Prepare the response data
     const responseData = {
       scatterData: scaledData.map(d => ({ x: d.reZ, y: d.imZ })),
-      lineData,
       xAxisLabel: "Re(Z) (mΩ cm²)",
       yAxisLabel: "-Im(Z) (mΩ cm²)",
-      equation: `y = ${slope.toFixed(2)}x + ${intercept.toFixed(2)} (R² = ${r2.toFixed(3)})`
     };
 
-    // Send the response
     res.json(responseData);
   } catch (error) {
     console.error('Error generating Test 4 chart:', error);
@@ -2238,105 +1443,5 @@ router.get('/test4', async (req, res) => {
   }
 });
 
-router.get('/durability-polcurve', async (req, res) => {
-  try {
-    // Check if iV Summary sheet exists
-    const ivSummarySheet = workbook.Sheets['iV Summary'];
-    if (!ivSummarySheet) {
-      return res.status(400).json({ message: 'iV Summary sheet not found' });
-    }
-
-    const polCurveData = [];
-
-    // Helper function to extract and validate numerical data from a specific cell
-    const getValidatedCellValue = (sheet, cell) => {
-      const cellObj = sheet[cell];
-      const value = cellObj ? parseFloat(cellObj.v) : null;
-      return !isNaN(value) ? value : null;
-    };
-
-    let columnOffset = 0;
-    let polCurveExists = true;
-
-    while (polCurveExists) {
-      const pCell = `P${2 + columnOffset}`;
-      const pValue = getValidatedCellValue(ivSummarySheet, pCell);
-
-      if (pValue !== null) {
-        const hours = `${pValue} hrs`;
-
-        // Extract and validate data for current density and voltage
-        const currentDensityCol = String.fromCharCode('Q'.charCodeAt(0) + columnOffset);
-        const voltageCol = String.fromCharCode('R'.charCodeAt(0) + columnOffset);
-
-        const currentDensityData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })
-          .slice(1)  // Skip header row
-          .map(row => parseFloat(row[currentDensityCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
-          .filter(value => !isNaN(value));  // Filter out non-numeric values
-
-        const voltageData = xlsx.utils.sheet_to_json(ivSummarySheet, { header: 1 })
-          .slice(1)  // Skip header row
-          .map(row => parseFloat(row[voltageCol.charCodeAt(0) - 'A'.charCodeAt(0)]))
-          .filter(value => !isNaN(value));  // Filter out non-numeric values
-
-        // Store pol curve data
-        polCurveData.push({
-          hours,
-          currentDensity: currentDensityData,
-          voltage: voltageData,
-        });
-
-        // Move to the next set of columns (7-column offset)
-        columnOffset += 7;
-      } else {
-        polCurveExists = false;
-      }
-    }
-
-    res.json({
-      message: 'Durability Pol Curves processed successfully',
-      polCurveData,
-    });
-  } catch (error) {
-    console.error('Error processing Durability Pol Curves:', error);
-    res.status(500).json({ message: 'Error processing Durability Pol Curves', error });
-  }
-});
-
-router.get('/polcurve-diw-time', async (req, res) => {
-  try {
-    const { currentDensity } = req.query; // Get the selected current density from the query parameters
-
-    if (!currentDensity) {
-      return res.status(400).json({ message: 'Current Density not provided' });
-    }
-
-    const cdValue = parseFloat(currentDensity);
-    if (isNaN(cdValue)) {
-      return res.status(400).json({ message: 'Invalid Current Density value' });
-    }
-
-    // Find the relevant voltage values for the selected current density across additionalPolCurves
-    const timeVoltagePairs = additionalPolCurves.map(curve => {
-      const voltageIndex = curve.currentDensity.indexOf(cdValue);
-      if (voltageIndex !== -1) {
-        return {
-          time: parseFloat(curve.hours), // Extract time from hours field
-          voltage: curve.voltage[voltageIndex],
-        };
-      }
-      return null;
-    }).filter(pair => pair !== null); // Filter out null pairs where the current density wasn't found
-
-    res.json({
-      xAxisLabel: 'Time (hr)',
-      yAxisLabel: 'Voltage (V)',
-      scatterData: timeVoltagePairs.map(pair => ({ x: pair.time, y: pair.voltage })),
-    });
-  } catch (error) {
-    console.error('Error generating Voltage vs Time chart:', error);
-    res.status(500).json({ message: 'Error generating chart', error });
-  }
-});
 
 module.exports = router;

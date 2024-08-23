@@ -611,6 +611,7 @@
 //
 //export default LogResultsGrid;
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTable, useRowSelect } from 'react-table';
 import axios from 'axios';
@@ -721,6 +722,7 @@ const LogResultsGrid = () => {
         ...updatedResults[index],
         excelFile: file,
       };
+      console.log("File uploaded; ", file);
       return updatedResults;
     });
   }, []);
@@ -791,7 +793,7 @@ const LogResultsGrid = () => {
         hardwareNumber: testResult.hardwareNumber || '',
         testStandChannel: testResult.testStandChannel || '',
         startDate: testResult.startDate || '',
-        endDate: testResult.endDate || 'N/A',
+        endDate: testResult.endDate || '',
         daysUnderTest: parseInt(testResult.daysUnderTest) || null,
         notes: testResult.notes || '',
         scratch: testResult.scratch || '',
@@ -853,10 +855,10 @@ const LogResultsGrid = () => {
         cathode_xrf_ru_loading: testResult.updateCathodeXrfRuLoading ? parseFloat(testResult.cathode_xrf_ru_loading) || null : null,
         cathode_ru_pt_mass: testResult.updateCathodeRuPtMass ? parseFloat(testResult.cathode_ru_pt_mass) || null : null,
         anode_fe_ni: testResult.updateAnodeFeNi ? parseFloat(testResult.anode_fe_ni) || null : null,
-        updateAnodeFeNi: testResult.updateAnodeFeNi || '',
-        updateCathodeXrfPtLoading: testResult.updateCathodeXrfPtLoading || '',
-        updateCathodeXrfRuLoading: testResult.updateCathodeXrfRuLoading || '',
-        updateCathodeRuPtMass: testResult.updateCathodeRuPtMass || '',
+        updateAnodeFeNi: testResult.updateAnodeFeNi || false,
+        updateCathodeXrfPtLoading: testResult.updateCathodeXrfPtLoading || false,
+        updateCathodeXrfRuLoading: testResult.updateCathodeXrfRuLoading || false,
+        updateCathodeRuPtMass: testResult.updateCathodeRuPtMass || false,
         slowPolCurveTestPerformed: testResult.slowPolCurveTestPerformed || false,
         excelFile: testResult.excelFile || null,
       };
@@ -1116,11 +1118,16 @@ const LogResultsGrid = () => {
         Header: 'Upload Excel',
         accessor: 'excelFile',
         Cell: ({ row: { index } }) => (
-          <Input
-            type="file"
-            accept=".xlsx, .xls, .xlsm"
-            onChange={(e) => handleFileChange(e, index)}
-          />
+          <div>
+            <Input
+              type="file"
+              accept=".xlsx, .xls, .xlsm"
+              onChange={(e) => handleFileChange(e, index)}
+            />
+            {testResults[index]?.excelFile && (
+              <div>{testResults[index].excelFile.name}</div>
+            )}
+          </div>
         ),
       },
       {
